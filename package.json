@@ -1,0 +1,31 @@
+{
+  "name": "taskent",
+  "version": "0.1.0",
+  "description": "Report AI coding agent task status to your taskent server. Never blocks the agent: local file queue first, async forward, offline replay.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "bin": {
+    "taskent": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
