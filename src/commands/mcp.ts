@@ -2,8 +2,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { loadConfig } from "../core/config.js";
+import { blindId, decryptText, finalizeForQueue, loadKeyFile } from "../core/crypto.js";
 import { flushOnce } from "../core/forward.js";
-import { getOverview } from "../core/http.js";
+import { getOverview, type ServerTask } from "../core/http.js";
 import { VERSION } from "../core/meta.js";
 import { appendItems, queueDepth } from "../core/queue.js";
 import { resolveProject, slugify } from "../core/project.js";
@@ -38,18 +39,16 @@ export async function runMcp(): Promise<void> {
       const project = resolveProject(process.cwd());
       const harness = currentHarness();
       const taskId = args.taskId ?? `${project.slug}:${slugify(args.title)}`;
-      appendItems([
-        {
-          v: 1,
-          taskId,
-          project,
-          title: args.title,
-          status: args.status,
-          ...(args.progress ? { progress: args.progress } : {}),
-          agent: { harness, ...(config?.machine ? { machine: config.machine } : {}) },
-          source: "mcp",
-        },
-      ]);
+      appendItems([finalizeForQueue({
+        v: 1,
+        taskId,
+        project,
+        title: args.title,
+        status: args.status,
+        ...(args.progress ? { progress: args.progress } : {}),
+        agent: { harness, ...(config?.machine ? { machine: config.machine } : {}) },
+        source: "mcp",
+      })]);
       void flushOnce().catch(() => {});
       return {
         content: [
@@ -76,18 +75,33 @@ export async function runMcp(): Promise<void> {
       }
       const project = resolveProject(process.cwd());
       const slug = args.projectSlug ?? project.slug;
+      const dk = loadKeyFile();
+      const key = dk ? Buffer.from(dk.key, "base64url") : null;
+      const wantBlind = key ? blindId(key, slug) : null;
       try {
         const projects = await getOverview(config.serverUrl, config.token);
-        const tasks = (projects.find((p) => p.slug === slug)?.tasks ?? []).filter(
-          (t) => t.status !== "done",
-        );
+        const group = projects.find((p) => p.slug === slug || (wantBlind !== null && p.blindId === wantBlind));
+        const tasks = (group?.tasks ?? []).filter((t) => t.status !== "done");
         if (tasks.length === 0) {
-          return { content: [{ type: "text", text: `no open tasks in ${slug}` }] };
+          return { content: [{ type: "text", text: `no open tasks in ${group?.alias ?? slug}` }] };
         }
-        const lines = tasks.map(
-          (t) => `- [${t.status}] ${t.title}${t.progress ? ` · ${t.progress}` : ""} · ${relativeTime(t.updatedAt)}`,
-        );
-        return { content: [{ type: "text", text: `open tasks in ${slug}:\n${lines.join("\n")}` }] };
+        const decode = (t: ServerTask): { title: string; progress?: string } => {
+          if (!t.enc) return { title: t.title ?? "", ...(t.progress ? { progress: t.progress } : {}) };
+          if (!key) return { title: "🔒 encrypted (run `taskent encrypt`)" };
+          try {
+            return {
+              title: decryptText(key, t.enc.title),
+              ...(t.enc.progress ? { progress: decryptText(key, t.enc.progress) } : {}),
+            };
+          } catch {
+            return { title: "🔒 decrypt failed (wrong passphrase?)" };
+          }
+        };
+        const lines = tasks.map((t) => {
+          const d = decode(t);
+          return `- [${t.status}] ${d.title}${d.progress ? ` · ${d.progress}` : ""} · ${relativeTime(t.updatedAt)}`;
+        });
+        return { content: [{ type: "text", text: `open tasks in ${group?.alias ?? slug}:\n${lines.join("\n")}` }] };
       } catch (err) {
         return {
           content: [

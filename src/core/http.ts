@@ -61,8 +61,10 @@ export interface ServerTask extends TaskItem {
 }
 
 export interface OverviewProject {
-  slug: string;
+  slug?: string;
   name?: string;
+  blindId?: string;
+  alias?: string;
   tasks: ServerTask[];
 }
 
@@ -85,7 +87,20 @@ export async function getHealthz(
   serverUrl: string,
   timeoutMs = 5_000,
 ): Promise<{ version?: string }> {
-  const res = await request(joinUrl(serverUrl, "/healthz"), {}, timeoutMs);
-  if (res.status !== 200) throw new ApiError(res.status, `healthz ${res.status}`);
+  const res = await request(joinUrl(serverUrl, "/health"), {}, timeoutMs);
+  if (res.status !== 200) throw new ApiError(res.status, `health ${res.status}`);
   return (await res.json()) as { version?: string };
+}
+
+export interface KdfConfig {
+  v: number;
+  alg: string;
+  iter: number;
+  salt: string;
+}
+
+export async function getKdf(serverUrl: string, timeoutMs = 5_000): Promise<KdfConfig> {
+  const res = await request(joinUrl(serverUrl, "/kdf"), {}, timeoutMs);
+  if (res.status !== 200) throw new ApiError(res.status, `kdf ${res.status}`);
+  return (await res.json()) as KdfConfig;
 }

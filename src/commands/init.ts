@@ -1,6 +1,7 @@
 import os from "node:os";
 import readline from "node:readline/promises";
 import { saveConfig, type TaskentConfig } from "../core/config.js";
+import { enableEncryption } from "./encrypt.js";
 import { ensureHome } from "../core/paths.js";
 
 interface InitFlags {
@@ -106,6 +107,17 @@ export async function runInit(argv: string[]): Promise<void> {
       ...(harness ? { harness } : {}),
     };
     saveConfig(config);
+
+    // 可选端到端加密（architecture §11）：口令派生密钥只落本地
+    const passphrase = (await rl.question("encryption passphrase (empty = plaintext mode): ")).trim();
+    if (passphrase.length > 0) {
+      const encResult = await enableEncryption(serverUrl, passphrase);
+      if (encResult.ok) {
+        console.log("e2ee enabled (derived key cached locally, 0600)");
+      } else {
+        console.error(`e2ee NOT enabled (server /kdf unreachable or error: ${encResult.error}); run \`taskent encrypt\` later`);
+      }
+    }
 
     console.log(`\nsaved: ~/.taskent/config.json`);
     console.log("\n1) Register the MCP server (per harness config, e.g. mcp.json / claude mcp add):");

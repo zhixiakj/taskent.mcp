@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { loadConfig } from "../core/config.js";
+import { finalizeForQueue } from "../core/crypto.js";
 import { toTaskItems } from "../core/normalize.js";
 import { appendItems, queueDepth } from "../core/queue.js";
 import { resolveProject } from "../core/project.js";
@@ -60,7 +61,7 @@ export async function runHook(argv: string[]): Promise<void> {
       ...(config?.machine ? { machine: config.machine } : {}),
     });
     if (items.length === 0) return;
-    appendItems(items);
+    appendItems(items.map(finalizeForQueue));
 
     if (config && queueDepth() > 0) {
       const self = process.argv[1];

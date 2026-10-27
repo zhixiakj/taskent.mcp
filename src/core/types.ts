@@ -4,10 +4,12 @@ export type TaskSource = "mcp" | "hook";
 export interface TaskItem {
   v: number;
   taskId: string;
-  project: { slug: string; name: string };
-  title: string;
+  // 明文模式用 slug/name；加密模式二者缺席，只有 blindId（architecture §11）
+  project: { slug?: string; name?: string; blindId?: string };
+  title?: string;
   status: TaskStatus;
   progress?: string;
+  enc?: { v: 1; title: string; progress?: string; name?: string };
   agent: { harness: string; model?: string; machine?: string };
   source: TaskSource;
 }

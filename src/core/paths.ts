@@ -20,6 +20,10 @@ export function stateFile(): string {
   return path.join(home(), "state.json");
 }
 
+export function keyFile(): string {
+  return path.join(home(), "key");
+}
+
 export function queueFile(): string {
   return path.join(home(), "queue", "pending.jsonl");
 }
