@@ -40,25 +40,76 @@ function askUrlSnippet(harness: string): string {
   );
 }
 
-function hooksEntry(event: string, matcher: string | undefined, harness: string): string {
-  const entry = {
-    [event]: [
+// ZCode：MCP 与 hooks 同在 ~/.zcode/cli/config.json，且配置文件 hooks 需要
+// hooks.enabled + events 嵌套（字段依据 docs/mcp-PLAN.md T1 摸底：ZCode 3.16.3 实测，
+// stdin payload 为 Claude Code 兼容超集；事件白名单无 Notification）
+function zcodeConfigSnippets(): { mcp: string; hooks: string } {
+  return {
+    mcp: JSON.stringify(
       {
-        ...(matcher ? { matcher } : {}),
-        hooks: [{ type: "command", command: `taskent hook --harness ${harness} --event ${event}` }],
+        mcp: {
+          servers: {
+            taskent: {
+              command: "taskent",
+              args: ["mcp"],
+              env: { TASKENT_HARNESS: "zcode" },
+            },
+          },
+        },
       },
-    ],
+      null,
+      2,
+    ),
+    hooks: JSON.stringify(
+      {
+        hooks: {
+          enabled: true,
+          events: {
+            PostToolUse: [
+              {
+                matcher: "Task|TodoWrite",
+                hooks: [{ type: "command", command: "taskent hook --harness zcode --event PostToolUse" }],
+              },
+            ],
+            Stop: [
+              {
+                hooks: [{ type: "command", command: "taskent hook --harness zcode --event Stop" }],
+              },
+            ],
+          },
+        },
+      },
+      null,
+      2,
+    ),
   };
-  return JSON.stringify(entry, null, 2);
 }
 
-function askHooksSnippet(harness: string): string {
-  return [
-    "// settings.json > hooks（Claude Code 格式；ZCode 的事件名以 taskent 摸底记录为准）",
-    `// 任务列表变化：\n${hooksEntry("PostToolUse", "Task|TodoWrite", harness)}`,
-    `// 会话结束：\n${hooksEntry("Stop", undefined, harness)}`,
-    `// 等待输入：\n${hooksEntry("Notification", undefined, harness)}`,
-  ].join("\n\n");
+function claudeCodeHooksSnippet(harness: string): string {
+  return JSON.stringify(
+    {
+      hooks: {
+        PostToolUse: [
+          {
+            matcher: "Task|TodoWrite",
+            hooks: [{ type: "command", command: `taskent hook --harness ${harness} --event PostToolUse` }],
+          },
+        ],
+        Stop: [
+          {
+            hooks: [{ type: "command", command: `taskent hook --harness ${harness} --event Stop` }],
+          },
+        ],
+        Notification: [
+          {
+            hooks: [{ type: "command", command: `taskent hook --harness ${harness} --event Notification` }],
+          },
+        ],
+      },
+    },
+    null,
+    2,
+  );
 }
 
 export async function runInit(argv: string[]): Promise<void> {
@@ -114,12 +165,35 @@ export async function runInit(argv: string[]): Promise<void> {
     }
 
     console.log(`\nsaved: ~/.taskent/config.json`);
-    console.log("\n1) Register the MCP server (per harness config, e.g. mcp.json / claude mcp add):");
-    console.log(askUrlSnippet(harness || "claude-code"));
-    console.log("\n   (with a global install you can use command \"taskent\" args [\"mcp\"] instead)");
-    console.log("\n2) Hooks (requires global install: npm i -g taskent):");
-    console.log(askHooksSnippet(harness || "claude-code"));
-    console.log("\n3) Verify:\n   taskent doctor");
+
+    const h = (harness || "").trim().toLowerCase() || "claude-code";
+    if (h === "zcode") {
+      const zc = zcodeConfigSnippets();
+      console.log("\n1) ZCode — merge BOTH blocks into ~/.zcode/cli/config.json (keep your existing keys):");
+      console.log("\n   MCP registration (\"mcp\" key):");
+      console.log(zc.mcp);
+      console.log(
+        '\n   Task capture ("hooks" key; requires global install: npm i -g taskent; open a NEW session to activate):',
+      );
+      console.log(zc.hooks);
+      console.log(
+        "\n   (ZCode has no Notification event — the waiting-for-input signal is not captured on ZCode.)",
+      );
+      console.log("\n2) Verify:\n   taskent doctor");
+    } else if (h === "claude-code") {
+      console.log("\n1) Register the MCP server (.mcp.json / claude mcp add):");
+      console.log(askUrlSnippet("claude-code"));
+      console.log('\n   (with a global install you can use command "taskent" args ["mcp"] instead)');
+      console.log(
+        "\n2) Hooks — paste into ~/.claude/settings.json (requires global install: npm i -g taskent):",
+      );
+      console.log(claudeCodeHooksSnippet("claude-code"));
+      console.log("\n3) Verify:\n   taskent doctor");
+    } else {
+      console.log("\n1) Register the MCP server + hooks for your harness — per-harness snippets:");
+      console.log("   see the Setup section of the README: npmjs.com/package/taskent");
+      console.log("\n2) Verify:\n   taskent doctor");
+    }
   } finally {
     rl.close();
   }

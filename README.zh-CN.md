@@ -16,7 +16,7 @@
 ## 前置条件
 
 - Node.js ≥ 18
-- taskent 服务端地址 + 上报 token(早期访问:[在 GitHub issue 申请](https://github.com/zhixiakj/taskent.mcp/issues/new?template=access.md))
+- taskent 账号:在 [app.taskent.io](https://app.taskent.io) 用 **GitHub 或 Google** 登录,然后在 *Settings → Collector tokens* 创建**采集令牌**(每机一枚、可吊销)
 
 ## 安装与接入
 
@@ -28,15 +28,45 @@ taskent doctor           # 体检:配置 / 版本 / 队列积压 / 服务端连�
 
 免安装试用:`npx taskent init`。
 
-`init` 依次询问采集令牌、机器名、主 harness(`claude-code` / `zcode` / `other`),然后打印两段配置:
+`init` 依次询问采集令牌、机器名、主 harness(`zcode` / `claude-code` / `other`),然后按 harness 打印对应配置片段。以下即打印内容(备查):
 
-**MCP 注册**(如 `claude mcp add` 或 harness 的 mcp.json):
+### ZCode
+
+两个块都写进 `~/.zcode/cli/config.json`(与已有键合并)。ZCode 有两处不同:配置文件 hooks 必须设 `"enabled": true` 且事件嵌在 `events` 下;没有 `Notification` 事件(「等待输入」暂不采集)。配置后需新开 ZCode 会话生效。
+
+MCP 注册(`mcp` 键):
+
+```json
+{ "mcp": { "servers": { "taskent": { "command": "taskent", "args": ["mcp"], "env": { "TASKENT_HARNESS": "zcode" } } } } }
+```
+
+任务采集(`hooks` 键):
+
+```json
+{
+  "hooks": {
+    "enabled": true,
+    "events": {
+      "PostToolUse": [
+        { "matcher": "Task|TodoWrite", "hooks": [ { "type": "command", "command": "taskent hook --harness zcode --event PostToolUse" } ] }
+      ],
+      "Stop": [
+        { "hooks": [ { "type": "command", "command": "taskent hook --harness zcode --event Stop" } ] }
+      ]
+    }
+  }
+}
+```
+
+### Claude Code
+
+MCP 注册(`.mcp.json` 或 `claude mcp add`):
 
 ```json
 { "mcpServers": { "taskent": { "command": "taskent", "args": ["mcp"], "env": { "TASKENT_HARNESS": "claude-code" } } } }
 ```
 
-**hooks**(Claude Code `settings.json`):
+hooks(`~/.claude/settings.json`):
 
 ```json
 {
@@ -53,6 +83,10 @@ taskent doctor           # 体检:配置 / 版本 / 队列积压 / 服务端连�
   }
 }
 ```
+
+### 其它 harness
+
+MCP server 是标准 stdio MCP,在 harness 读取 MCP 配置处注册 `taskent mcp` 即可。hooks 是自动采集通道:若你的 harness 有 Claude Code 兼容的 hook 事件(stdin JSON 含 `tool_name` / `tool_input` / `session_id`),同样的 hook 命令可直接套用。
 
 配好后用同一账号打开 [app.taskent.io](https://app.taskent.io),让 agent 跑个任务,约 30 秒内出现在总览页。
 

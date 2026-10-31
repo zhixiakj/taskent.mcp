@@ -36,15 +36,49 @@ taskent doctor           # health check: config / version / queue / server conne
 Try without installing: `npx taskent init`.
 
 `taskent init` asks for your collector token, a machine name and your primary harness
-(`claude-code` / `zcode` / `other`), then prints two snippets to paste into your agent's config:
+(`zcode` / `claude-code` / `other`), then prints harness-specific snippets to paste into
+your agent's config. The blocks below are what it prints (shown for reference):
 
-**MCP registration** (e.g. `claude mcp add`, or your harness's `mcp.json`):
+### ZCode
+
+Both blocks go into `~/.zcode/cli/config.json` — merge them with your existing keys.
+Two ZCode specifics: config-file hooks must set `"enabled": true` and nest events under
+`events`, and there is no `Notification` event (waiting-for-input is not captured on ZCode).
+Open a new ZCode session to activate.
+
+MCP registration (`mcp` key):
+
+```json
+{ "mcp": { "servers": { "taskent": { "command": "taskent", "args": ["mcp"], "env": { "TASKENT_HARNESS": "zcode" } } } } }
+```
+
+Task capture (`hooks` key):
+
+```json
+{
+  "hooks": {
+    "enabled": true,
+    "events": {
+      "PostToolUse": [
+        { "matcher": "Task|TodoWrite", "hooks": [ { "type": "command", "command": "taskent hook --harness zcode --event PostToolUse" } ] }
+      ],
+      "Stop": [
+        { "hooks": [ { "type": "command", "command": "taskent hook --harness zcode --event Stop" } ] }
+      ]
+    }
+  }
+}
+```
+
+### Claude Code
+
+MCP registration (`.mcp.json` or `claude mcp add`):
 
 ```json
 { "mcpServers": { "taskent": { "command": "taskent", "args": ["mcp"], "env": { "TASKENT_HARNESS": "claude-code" } } } }
 ```
 
-**Hooks** (Claude Code `settings.json`):
+Hooks (`~/.claude/settings.json`):
 
 ```json
 {
@@ -61,6 +95,13 @@ Try without installing: `npx taskent init`.
   }
 }
 ```
+
+### Other harnesses
+
+The MCP server is standard stdio MCP — register `taskent mcp` wherever your harness
+reads MCP servers. Hooks are the auto-capture channel; if your harness has
+Claude-Code-compatible hook events (stdin JSON with `tool_name` / `tool_input` /
+`session_id`), the same hook commands work as-is.
 
 Now open [app.taskent.io](https://app.taskent.io) with the same account, run a task with your agent,
 and watch it appear on the dashboard within ~30 seconds.
