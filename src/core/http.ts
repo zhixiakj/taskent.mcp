@@ -1,3 +1,4 @@
+import { VERSION } from "./meta.js";
 import type { TaskItem } from "./types.js";
 
 export class ApiError extends Error {
@@ -13,7 +14,7 @@ function joinUrl(base: string, p: string): string {
   return base.replace(/\/+$/, "") + p;
 }
 
-// 硬超时一律挂在「同步返回 Promise」的调用边界（AbortController + fetch），
+// 硬超时一律挂在「同步返回 Future」的调用边界（AbortController + fetch），
 // 不给库调用链套任何包装（全局异步规则）
 async function request(
   url: string,
@@ -23,7 +24,11 @@ async function request(
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...init, signal: ac.signal });
+    return await fetch(url, {
+      ...init,
+      headers: { "x-taskent-client": `mcp/${VERSION}`, ...(init.headers as Record<string, string> | undefined) },
+      signal: ac.signal,
+    });
   } finally {
     clearTimeout(timer);
   }
@@ -99,8 +104,36 @@ export interface KdfConfig {
   salt: string;
 }
 
-export async function getKdf(serverUrl: string, timeoutMs = 5_000): Promise<KdfConfig> {
-  const res = await request(joinUrl(serverUrl, "/kdf"), {}, timeoutMs);
+/** /kdf：带令牌返回该用户盐（多用户 per-user 盐）；无令牌回落全局盐（旧服务端兼容）。 */
+export async function getKdf(serverUrl: string, token?: string, timeoutMs = 5_000): Promise<KdfConfig> {
+  const res = await request(
+    joinUrl(serverUrl, "/kdf"),
+    { headers: token ? { authorization: `Bearer ${token}` } : {} },
+    timeoutMs,
+  );
   if (res.status !== 200) throw new ApiError(res.status, `kdf ${res.status}`);
   return (await res.json()) as KdfConfig;
+}
+
+export interface Whoami {
+  uid: string;
+  via: "pat" | "jwt" | "legacy";
+  login?: string;
+  name?: string;
+  admin?: boolean;
+}
+
+/** /whoami：带鉴权探针（doctor 区分令牌失效 401 与网络错误）。 */
+export async function getWhoami(
+  serverUrl: string,
+  token: string,
+  timeoutMs = 5_000,
+): Promise<Whoami> {
+  const res = await request(
+    joinUrl(serverUrl, "/whoami"),
+    { headers: { authorization: `Bearer ${token}` } },
+    timeoutMs,
+  );
+  if (res.status !== 200) throw new ApiError(res.status, `whoami ${res.status}`);
+  return (await res.json()) as Whoami;
 }

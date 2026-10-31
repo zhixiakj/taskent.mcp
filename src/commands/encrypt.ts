@@ -10,12 +10,14 @@ import { getKdf } from "../core/http.js";
 import { keyFile } from "../core/paths.js";
 
 // 启用/重设端到端加密：口令仅在本地派生密钥，永不上传（architecture §11）
+// token 传入以取 per-user 盐（多用户）；旧服务端无令牌路径回落全局盐。
 export async function enableEncryption(
   serverUrl: string,
   passphrase: string,
+  token?: string,
 ): Promise<{ ok: true; salt: string } | { ok: false; error: string }> {
   try {
-    const kdf = await getKdf(serverUrl);
+    const kdf = await getKdf(serverUrl, token);
     const key = await deriveKey(passphrase, kdf.salt, kdf.iter);
     // 落盘前自检：加密→解密往返
     const probe = encryptText(key, "taskent-selftest");
@@ -58,7 +60,7 @@ export async function runEncrypt(argv: string[]): Promise<void> {
     return;
   }
 
-  const result = await enableEncryption(config.serverUrl, passphrase);
+  const result = await enableEncryption(config.serverUrl, passphrase, config.token);
   if (result.ok) {
     console.log(`e2ee enabled; derived key saved to ${keyFile()} (mode 0600)`);
     console.log("new reports will be encrypted; plaintext tasks remain readable");

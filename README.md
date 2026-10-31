@@ -22,7 +22,8 @@ changes from Claude Code, ZCode and other MCP-speaking harnesses and reports the
 ## Requirements
 
 - Node.js ≥ 18
-- A taskent server URL + ingest token (early access: [request one via GitHub issue](https://github.com/zhixiakj/taskent.mcp/issues/new?template=access.md))
+- A taskent account: sign in with **GitHub or Google** at [app.taskent.io](https://app.taskent.io),
+  then create a **collector token** under *Settings → Collector tokens* (one per machine, revocable)
 
 ## Quickstart
 
@@ -34,7 +35,7 @@ taskent doctor           # health check: config / version / queue / server conne
 
 Try without installing: `npx taskent init`.
 
-`taskent init` asks for your server URL, ingest token, a machine name and your primary harness
+`taskent init` asks for your server URL (`https://app.taskent.io`), the collector token, a machine name and your primary harness
 (`claude-code` / `zcode` / `other`), then prints two snippets to paste into your agent's config:
 
 **MCP registration** (e.g. `claude mcp add`, or your harness's `mcp.json`):
@@ -105,7 +106,7 @@ to the server. Config, queue and keys live under `~/.taskent/`.
 
 ## Status
 
-v0.1.0 — early access. The collector is functional (queue, hooks, MCP, E2EE, doctor);
+v0.2.0 — early access. Multi-user accounts (GitHub/Google sign-in, per-user data isolation, per-machine collector tokens) landed in 0.2.0. The collector is functional (queue, hooks, MCP, E2EE, doctor);
 onboarding is currently manual (paste snippets). Automatic harness configuration is next.
 
 ## License

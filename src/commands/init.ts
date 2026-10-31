@@ -78,7 +78,9 @@ export async function runInit(argv: string[]): Promise<void> {
 
     let token = flags.token;
     if (!token) {
-      token = (await rl.question("ingest token: ")).trim();
+      token = (
+        await rl.question("ingest token (web → Settings → Collector tokens; sign in first): ")
+      ).trim();
     }
     if (token.length === 0) {
       console.error("token is required");
@@ -108,10 +110,10 @@ export async function runInit(argv: string[]): Promise<void> {
     };
     saveConfig(config);
 
-    // 可选端到端加密（architecture §11）：口令派生密钥只落本地
+    // 可选端到端加密（architecture §11）：口令派生密钥只落本地（带 token 取 per-user 盐）
     const passphrase = (await rl.question("encryption passphrase (empty = plaintext mode): ")).trim();
     if (passphrase.length > 0) {
-      const encResult = await enableEncryption(serverUrl, passphrase);
+      const encResult = await enableEncryption(serverUrl, passphrase, token);
       if (encResult.ok) {
         console.log("e2ee enabled (derived key cached locally, 0600)");
       } else {

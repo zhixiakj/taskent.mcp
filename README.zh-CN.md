@@ -28,7 +28,7 @@ taskent doctor           # 体检:配置 / 版本 / 队列积压 / 服务端连�
 
 免安装试用:`npx taskent init`。
 
-`init` 依次询问服务端地址、token、机器名、主 harness(`claude-code` / `zcode` / `other`),然后打印两段配置:
+`init` 依次询问服务端地址(`https://app.taskent.io`)、采集令牌、机器名、主 harness(`claude-code` / `zcode` / `other`),然后打印两段配置:
 
 **MCP 注册**(如 `claude mcp add` 或 harness 的 mcp.json):
 
@@ -88,7 +88,7 @@ taskent encrypt           # 设置口令;密钥本地派生(PBKDF2-SHA256, 600k 
 
 ## 状态
 
-v0.1.0,早期访问。采集链路(队列/hooks/MCP/E2EE/doctor)已可用;接入目前为手工粘贴配置片段,自动配置在计划中。
+v0.2.0,早期访问。0.2.0 起为多用户账号体系(GitHub/Google 登录、数据按用户隔离、每机一枚可吊销的采集令牌)。采集链路(队列/hooks/MCP/E2EE/doctor)已可用;接入目前为手工粘贴配置片段,自动配置在计划中。
 
 ## License
 

@@ -6,7 +6,7 @@ import {
   encryptText,
   loadKeyFile,
 } from "../core/crypto.js";
-import { getHealthz, getKdf } from "../core/http.js";
+import { ApiError, getHealthz, getKdf, getWhoami } from "../core/http.js";
 import { VERSION } from "../core/meta.js";
 import { configFile, deadLetterFile, flushLockDir, home } from "../core/paths.js";
 import { readLines } from "../core/queue.js";
@@ -72,7 +72,7 @@ export async function runDoctor(argv: string[]): Promise<void> {
       );
       if (config) {
         try {
-          const kdf = await getKdf(config.serverUrl);
+          const kdf = await getKdf(config.serverUrl, config.token);
           if (kdf.salt !== dk.salt) {
             line(false, "e2ee salt", "server salt differs from local key — passphrase derived against another salt; re-run `taskent encrypt`");
           }
@@ -93,6 +93,25 @@ export async function runDoctor(argv: string[]): Promise<void> {
       line(true, "server", `${config.serverUrl} (v${health.version ?? "?"})`);
     } catch (err) {
       line(false, "server", `${config.serverUrl} unreachable: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    // 带鉴权探针：区分「令牌失效 401」与网络错误（/health 本身无鉴权，看不出 401）
+    try {
+      const me = await getWhoami(config.serverUrl, config.token);
+      line(
+        true,
+        "token",
+        `valid (${me.via}${me.login ? ` @${me.login}` : ""}${me.admin ? ", admin" : ""})`,
+      );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        line(
+          false,
+          "token",
+          "invalid (401) — regenerate in web → Settings → Collector tokens, then run: taskent init",
+        );
+      } else {
+        line(false, "token", `not verified (${err instanceof Error ? err.message : String(err)})`);
+      }
     }
   }
 

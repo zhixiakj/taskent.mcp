@@ -58,7 +58,14 @@ export async function flushOnce(config: TaskentConfig | null = loadConfig()): Pr
         state.backoffLevel = level;
         state.nextAttemptAt = new Date(Date.now() + nextDelayMs(level)).toISOString();
         saveState(state);
-        if (apiErr && apiErr.status === 401) return { status: "unauthorized" };
+        if (apiErr && apiErr.status === 401) {
+          // 401 是凭证问题而非网络抖动：清掉退避，换新令牌后下一次 flush 立即执行
+          const s = loadState();
+          s.backoffLevel = 0;
+          delete s.nextAttemptAt;
+          saveState(s);
+          return { status: "unauthorized" };
+        }
         return { status: "error", error: err instanceof Error ? err.message : String(err) };
       }
       dropFirstN(raws.length);
