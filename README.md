@@ -1,48 +1,113 @@
 # taskent
 
-把 AI 编码代理（ZCode、Claude Code 等）里的任务状态变化，可靠地采集并上报到你的 taskent 服务端。上报链路永不阻塞 agent——先写本地队列，再异步转发，断网自动重传。
+[![npm](https://img.shields.io/npm/v/taskent)](https://www.npmjs.com/package/taskent)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-## 组成
+One dashboard for all your AI coding agents. This is the **collector**: it captures task-status
+changes from Claude Code, ZCode and other MCP-speaking harnesses and reports them to your
+[taskent](https://taskent.io) server — reliably, and without ever getting in the agent's way.
 
-- **MCP server**（stdio）：提供 `task_upsert`、`task_list` 两个工具，agent 可主动上报任务进展、拉取未完结任务续接工作
-- **hooks 被动捕获**：监听编码代理的任务/会话事件，无需 agent 配合即可采集状态变化（主通道）
-- **本地缓冲转发**：队列文件落盘后立即返回，独立循环转发，失败指数退避（1m/5m/30m 封顶）
+[中文说明](README.zh-CN.md) · [Website](https://taskent.io) · [Dashboard](https://app.taskent.io)
 
-## 安装与接入
+## How it works
+
+- **Hooks capture (main channel)** — listens to your agent's task/session events. No agent
+  cooperation required; task changes are picked up as they happen.
+- **MCP server** (stdio) — exposes `task_upsert` / `task_list` tools so agents can report
+  progress explicitly and pick unfinished tasks back up.
+- **Local queue first** — hook invocations append to an on-disk queue and return immediately
+  (milliseconds, works offline). A background forwarder ships batches to your server with
+  exponential backoff (1m/5m/30m capped) and at-least-once + idempotent upserts.
+
+## Requirements
+
+- Node.js ≥ 18
+- A taskent server URL + ingest token (early access: [request one via GitHub issue](https://github.com/zhixiakj/taskent.mcp/issues/new?template=access.md))
+
+## Quickstart
 
 ```bash
-npm install -g taskent   # 推荐：hooks 需要本地二进制（毫秒启动、离线可用）
-taskent init             # 写配置 + 打印 MCP/hooks 两段可直接粘贴的注册片段
-taskent doctor           # 体检：配置 / 版本 / 队列积压 / 服务端连通
+npm install -g taskent   # hooks need the local binary (millisecond startup, offline-safe)
+taskent init             # interactive setup; prints ready-to-paste MCP + hooks snippets
+taskent doctor           # health check: config / version / queue / server connectivity
 ```
 
-免安装试用：`npx taskent init`、MCP 注册用 `npx -y taskent@latest mcp`。
+Try without installing: `npx taskent init`.
 
-## 升级
+`taskent init` asks for your server URL, ingest token, a machine name and your primary harness
+(`claude-code` / `zcode` / `other`), then prints two snippets to paste into your agent's config:
 
-- `taskent upgrade` 一条命令自更新（`npm i -g taskent@latest`）
-- 版本检查每日最多一次、3 秒超时、只提示不自动安装；hook 路径永不联网查版本
-- 向后兼容承诺：旧客户端永远可以上报——payload 带版本字段，服务端忽略未知字段，hooks 失败恒退出 0 不影响你的编码会话
+**MCP registration** (e.g. `claude mcp add`, or your harness's `mcp.json`):
 
-## 命令一览
+```json
+{ "mcpServers": { "taskent": { "command": "taskent", "args": ["mcp"], "env": { "TASKENT_HARNESS": "claude-code" } } } }
+```
 
-| 命令 | 用途 |
+**Hooks** (Claude Code `settings.json`):
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      { "matcher": "Task|TodoWrite", "hooks": [ { "type": "command", "command": "taskent hook --harness claude-code --event PostToolUse" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "taskent hook --harness claude-code --event Stop" } ] }
+    ],
+    "Notification": [
+      { "hooks": [ { "type": "command", "command": "taskent hook --harness claude-code --event Notification" } ] }
+    ]
+  }
+}
+```
+
+Now open [app.taskent.io](https://app.taskent.io), enter the same server URL + token in Settings,
+run a task with your agent, and watch it appear on the dashboard within ~30 seconds.
+
+## End-to-end encryption (opt-in)
+
+```bash
+taskent encrypt           # set a passphrase; keys are derived locally (PBKDF2-SHA256, 600k)
+```
+
+Your passphrase never leaves the machine. Task titles, progress and project names are sealed
+with AES-256-GCM before upload; the server only sees ciphertext and blind IDs. Enter the same
+passphrase in the dashboard's E2EE card to decrypt. Encrypted projects show up as `P1`, `P2`, …
+(editable aliases) — status, grouping and push triggers keep working. Lost passphrase = data is
+unrecoverable.
+
+## Commands
+
+| Command | Purpose |
 |---|---|
-| `taskent init` | 交互式配置，输出 MCP/hooks 注册片段 |
-| `taskent mcp` | 启动 MCP server（stdio，供 harness 注册） |
-| `taskent hook --harness H --event E` | hooks 入口（stdin 读 JSON 负载） |
-| `taskent flush` | 手动清空本地队列 |
-| `taskent upgrade` | 自更新到最新版 |
-| `taskent doctor [--force]` | 健康检查 |
+| `taskent init` | Interactive setup; prints MCP/hooks registration snippets |
+| `taskent mcp` | Start the MCP server (stdio, for harness registration) |
+| `taskent hook --harness H --event E` | Hooks entry point (reads JSON payload from stdin) |
+| `taskent encrypt [--passphrase P]` | Enable/reset end-to-end encryption |
+| `taskent flush` | Manually drain the local queue |
+| `taskent upgrade` | Self-update (`npm i -g taskent@latest`) |
+| `taskent doctor [--force]` | Health check |
 
-## 隐私
+## Privacy
 
-只上报任务元数据（标题、状态、项目名、agent/机器名、时间戳）；不上报任务正文、代码或 prompt。本地队列与配置存于 `~/.taskent/`。
+Only task metadata is reported (title, status, project name, agent/machine name, timestamps) —
+never task bodies, code, prompts or diffs. With E2EE on, even the metadata above is ciphertext
+to the server. Config, queue and keys live under `~/.taskent/`.
 
-## 状态
+## Upgrades & compatibility
 
-早期开发中，尚未发布到 npm。
+- `taskent upgrade` self-updates in one command.
+- Version checks happen at most once a day (3s timeout, prompt-only); the hook path never
+  touches the network for version checks.
+- Backward-compat promise: old clients can always report — payloads carry a version field,
+  the server ignores unknown fields, and hooks always exit 0 so your coding session is never
+  disturbed.
+
+## Status
+
+v0.1.0 — early access. The collector is functional (queue, hooks, MCP, E2EE, doctor);
+onboarding is currently manual (paste snippets). Automatic harness configuration is next.
 
 ## License
 
-发布前确定。
+[MIT](LICENSE)

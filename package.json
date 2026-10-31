@@ -1,15 +1,36 @@
 {
   "name": "taskent",
   "version": "0.1.0",
-  "description": "Report AI coding agent task status to your taskent server. Never blocks the agent: local file queue first, async forward, offline replay.",
+  "description": "One dashboard for all your AI coding agents — collector CLI. Reports task status from Claude Code / ZCode (MCP + hooks) to your taskent server; local queue first, async forward, offline replay, optional end-to-end encryption.",
   "type": "module",
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "author": "Mike",
+  "homepage": "https://taskent.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhixiakj/taskent.mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zhixiakj/taskent.mcp/issues"
+  },
+  "keywords": [
+    "ai-agents",
+    "claude-code",
+    "mcp",
+    "task-tracker",
+    "developer-tools",
+    "dashboard",
+    "cli",
+    "hooks"
+  ],
   "bin": {
     "taskent": "dist/cli.js"
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18"
@@ -26,6 +47,6 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.5.0",
-    "vitest": "^2.0.0"
+    "vitest": "^2.2.0"
   }
 }
