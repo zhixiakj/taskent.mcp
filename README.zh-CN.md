@@ -28,7 +28,7 @@ taskent doctor           # 体检:配置 / 版本 / 队列积压 / 服务端连�
 
 免安装试用:`npx taskent init`。
 
-`init` 依次询问服务端地址(`https://app.taskent.io`)、采集令牌、机器名、主 harness(`claude-code` / `zcode` / `other`),然后打印两段配置:
+`init` 依次询问采集令牌、机器名、主 harness(`claude-code` / `zcode` / `other`),然后打印两段配置:
 
 **MCP 注册**(如 `claude mcp add` 或 harness 的 mcp.json):
 
@@ -54,7 +54,7 @@ taskent doctor           # 体检:配置 / 版本 / 队列积压 / 服务端连�
 }
 ```
 
-配好后打开 [app.taskent.io](https://app.taskent.io),设置页填同一组服务端地址 + token,让 agent 跑个任务,约 30 秒内出现在总览页。
+配好后用同一账号打开 [app.taskent.io](https://app.taskent.io),让 agent 跑个任务,约 30 秒内出现在总览页。
 
 ## 端到端加密(opt-in)
 

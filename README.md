@@ -35,7 +35,7 @@ taskent doctor           # health check: config / version / queue / server conne
 
 Try without installing: `npx taskent init`.
 
-`taskent init` asks for your server URL (`https://app.taskent.io`), the collector token, a machine name and your primary harness
+`taskent init` asks for your collector token, a machine name and your primary harness
 (`claude-code` / `zcode` / `other`), then prints two snippets to paste into your agent's config:
 
 **MCP registration** (e.g. `claude mcp add`, or your harness's `mcp.json`):
@@ -62,8 +62,8 @@ Try without installing: `npx taskent init`.
 }
 ```
 
-Now open [app.taskent.io](https://app.taskent.io), enter the same server URL + token in Settings,
-run a task with your agent, and watch it appear on the dashboard within ~30 seconds.
+Now open [app.taskent.io](https://app.taskent.io) with the same account, run a task with your agent,
+and watch it appear on the dashboard within ~30 seconds.
 
 ## End-to-end encryption (opt-in)
 

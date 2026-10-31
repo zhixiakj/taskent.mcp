@@ -5,18 +5,19 @@ import { enableEncryption } from "./encrypt.js";
 import { ensureHome } from "../core/paths.js";
 
 interface InitFlags {
-  serverUrl?: string;
   token?: string;
   machine?: string;
   harness?: string;
 }
 
+// 托管服务唯一入口：server 闭源、不存在自托管场景，init 不提问也不提供覆盖项
+const SERVER_URL = "https://app.taskent.io";
+
 export function parseInitFlags(argv: string[]): InitFlags {
   const flags: InitFlags = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--server-url") flags.serverUrl = argv[++i];
-    else if (a === "--token") flags.token = argv[++i];
+    if (a === "--token") flags.token = argv[++i];
     else if (a === "--machine") flags.machine = argv[++i];
     else if (a === "--harness") flags.harness = argv[++i];
   }
@@ -65,21 +66,12 @@ export async function runInit(argv: string[]): Promise<void> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
   try {
-    let serverUrl = flags.serverUrl;
-    if (!serverUrl) {
-      serverUrl = (await rl.question("taskent server URL (e.g. https://your-project.web.app): ")).trim();
-    }
-    serverUrl = serverUrl.replace(/\/+$/, "");
-    if (!/^https?:\/\//.test(serverUrl)) {
-      console.error("invalid server URL");
-      process.exitCode = 1;
-      return;
-    }
+    const serverUrl = SERVER_URL;
 
     let token = flags.token;
     if (!token) {
       token = (
-        await rl.question("ingest token (web → Settings → Collector tokens; sign in first): ")
+        await rl.question(`ingest token (${serverUrl} → Settings → Collector tokens; sign in first): `)
       ).trim();
     }
     if (token.length === 0) {
