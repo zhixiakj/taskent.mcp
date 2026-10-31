@@ -1,6 +1,6 @@
 {
   "name": "taskent",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "One dashboard for all your AI coding agents — collector CLI. Reports task status from Claude Code / ZCode (MCP + hooks) to your taskent server; local queue first, async forward, offline replay, optional end-to-end encryption.",
   "type": "module",
   "license": "MIT",
