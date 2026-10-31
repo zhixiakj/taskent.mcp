@@ -1,9 +1,9 @@
-# taskent
+# Taskent
 
 [![npm](https://img.shields.io/npm/v/taskent)](https://www.npmjs.com/package/taskent)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-把 AI 编码代理(Claude Code、ZCode 等)里的任务状态变化,可靠地采集并上报到你的 [taskent](https://taskent.io) 服务端。上报链路永不阻塞 agent——先写本地队列,再异步转发,断网自动重传。
+把 AI 编码代理(Claude Code、ZCode 等)里的任务状态变化,可靠地采集并上报到你的 [Taskent](https://taskent.io) 服务端。上报链路永不阻塞 agent——先写本地队列,再异步转发,断网自动重传。
 
 [English](README.md) · [官网](https://taskent.io) · [总览看板](https://app.taskent.io)
 

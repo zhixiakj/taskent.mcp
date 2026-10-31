@@ -1,11 +1,11 @@
-# taskent
+# Taskent
 
 [![npm](https://img.shields.io/npm/v/taskent)](https://www.npmjs.com/package/taskent)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 One dashboard for all your AI coding agents. This is the **collector**: it captures task-status
 changes from Claude Code, ZCode and other MCP-speaking harnesses and reports them to your
-[taskent](https://taskent.io) server — reliably, and without ever getting in the agent's way.
+[Taskent](https://taskent.io) server — reliably, and without ever getting in the agent's way.
 
 [中文说明](README.zh-CN.md) · [Website](https://taskent.io) · [Dashboard](https://app.taskent.io)
 
