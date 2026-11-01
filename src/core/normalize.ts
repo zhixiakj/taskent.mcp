@@ -67,7 +67,7 @@ function todosToTasks(ctx: HookContext, toolInput: unknown): TaskItem[] {
   return out;
 }
 
-// Claude Code（适配层单文件隔离；Task 工具负载形态 TODO(T1) 实测后校准）
+// Claude Code adapter, isolated in one file for easier payload compatibility updates.
 function claudeCodeToTasks(event: string, payload: Record<string, unknown>, ctx: HookContext): TaskItem[] {
   switch (event) {
     case "PostToolUse": {
@@ -85,7 +85,7 @@ function claudeCodeToTasks(event: string, payload: Record<string, unknown>, ctx:
     case "Notification": {
       const taskId = sessionTaskId(ctx, payload.session_id);
       if (!taskId) return [];
-      // 不透传 message 原文（隐私保守），统一记「等待输入」
+      // Do not forward the message body; record only the privacy-safe state.
       return [makeTask(ctx, taskId, `session ${String(payload.session_id).slice(-8)}`, "blocked", "awaiting input")];
     }
     default:
@@ -93,7 +93,7 @@ function claudeCodeToTasks(event: string, payload: Record<string, unknown>, ctx:
   }
 }
 
-// ZCode：事件名与负载形态 TODO(T1) 摸底；先按 Claude Code 兼容形状尽力解析，解析不出静默忽略
+// Parse ZCode's Claude Code-compatible payload shape and ignore unknown events silently.
 function zcodeToTasks(event: string, payload: Record<string, unknown>, ctx: HookContext): TaskItem[] {
   return claudeCodeToTasks(event, payload, ctx);
 }

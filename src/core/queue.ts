@@ -38,7 +38,7 @@ export function queueDepth(): number {
   return readLines().filter((l) => l.line !== null).length;
 }
 
-// 批量成功后重写文件：去掉前 sentCount 行有效行；损坏行在重写时一并丢弃（不重发也不积压）
+// After a successful batch, rewrite without the first n valid lines and discard corrupt lines.
 export function dropFirstN(n: number): void {
   const file = queueFile();
   const lines = readLines(file);
@@ -64,11 +64,11 @@ export interface FlushLock {
   release(): void;
 }
 
-// mkdir 原子锁 + pid + 过期抢占（architecture.md §9.4）：防止 MCP 长驻与 hook 派生的
-// flush 子进程并发重放；at-least-once 投递由服务端 upsert 幂等兜底
+// Atomic mkdir lock with a pid and stale takeover (architecture.md §9.4) prevents
+// concurrent replay by the MCP process and hook-spawned flush children.
 export function acquireFlushLock(staleMs = 120_000): FlushLock | null {
   const dir = flushLockDir();
-  ensureHome(); // 幂确保父目录；锁目录本身仍用非递归 mkdir 保证原子性
+  ensureHome(); // Ensure the parent exists; non-recursive mkdir keeps locking atomic.
   const tryAcquire = (): boolean => {
     try {
       fs.mkdirSync(dir);
@@ -91,10 +91,10 @@ export function acquireFlushLock(staleMs = 120_000): FlushLock | null {
   try {
     stale = Date.now() - fs.statSync(dir).mtimeMs >= staleMs;
   } catch {
-    stale = true; // 竞态消失（持有者刚释放）：视作可抢占
+    stale = true; // The holder released it during this check, so takeover is safe.
   }
   if (!stale) return null;
-  // 过期锁：抢占重建（可能的上一个持有者已死或卡死）
+  // Rebuild a stale lock whose previous holder may have crashed or hung.
   fs.rmSync(dir, { recursive: true, force: true });
   if (!tryAcquire()) return null;
   return {

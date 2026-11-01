@@ -4,7 +4,7 @@ export type TaskSource = "mcp" | "hook";
 export interface TaskItem {
   v: number;
   taskId: string;
-  // 明文模式用 slug/name；加密模式二者缺席，只有 blindId（architecture §11）
+  // Plaintext mode uses slug/name; encrypted mode uses only blindId (architecture §11).
   project: { slug?: string; name?: string; blindId?: string };
   title?: string;
   status: TaskStatus;

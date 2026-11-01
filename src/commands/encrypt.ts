@@ -10,8 +10,8 @@ import {
 import { getKdf } from "../core/http.js";
 import { keyFile } from "../core/paths.js";
 
-// 启用/重设端到端加密：口令仅在本地派生密钥，永不上传（architecture §11）
-// token 传入以取 per-user 盐（多用户）；旧服务端无令牌路径回落全局盐。
+// Enable or reset E2EE. The passphrase derives a key locally and is never uploaded.
+// Pass the token to fetch a per-user salt; legacy servers fall back to the global salt.
 export async function enableEncryption(
   serverUrl: string,
   passphrase: string,
@@ -20,7 +20,7 @@ export async function enableEncryption(
   try {
     const kdf = await getKdf(serverUrl, token);
     const key = await deriveKey(passphrase, kdf.salt, kdf.iter);
-    // 落盘前自检：加密→解密往返
+    // Verify an encryption/decryption roundtrip before saving the key.
     const probe = encryptText(key, "taskent-selftest");
     if (decryptText(key, probe) !== "taskent-selftest") {
       return { ok: false, error: "selftest failed" };

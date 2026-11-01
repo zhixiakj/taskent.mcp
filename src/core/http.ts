@@ -14,8 +14,7 @@ function joinUrl(base: string, p: string): string {
   return base.replace(/\/+$/, "") + p;
 }
 
-// 硬超时一律挂在「同步返回 Future」的调用边界（AbortController + fetch），
-// 不给库调用链套任何包装（全局异步规则）
+// Attach hard timeouts at the fetch boundary with AbortController, without wrapper chains.
 async function request(
   url: string,
   init: RequestInit,
@@ -61,8 +60,8 @@ export async function postIngest(
 }
 
 /**
- * POST /heartbeat（machines 体系）：presence 数据——失败由调用方吞掉即可，
- * 不重试不排队（丢一次心跳无影响，下个间隔自愈）。
+ * POST /heartbeat presence data. Callers may ignore failures without retrying or
+ * queueing because the next interval automatically restores presence.
  */
 export async function postHeartbeat(
   serverUrl: string,
@@ -132,7 +131,7 @@ export interface KdfConfig {
   salt: string;
 }
 
-/** /kdf：带令牌返回该用户盐（多用户 per-user 盐）；无令牌回落全局盐（旧服务端兼容）。 */
+/** /kdf returns a per-user salt with a token, or the legacy global salt without one. */
 export async function getKdf(serverUrl: string, token?: string, timeoutMs = 5_000): Promise<KdfConfig> {
   const res = await request(
     joinUrl(serverUrl, "/kdf"),
@@ -151,7 +150,7 @@ export interface Whoami {
   admin?: boolean;
 }
 
-/** /whoami：带鉴权探针（doctor 区分令牌失效 401 与网络错误）。 */
+/** Authenticated /whoami probe used by doctor to distinguish 401 from network errors. */
 export async function getWhoami(
   serverUrl: string,
   token: string,

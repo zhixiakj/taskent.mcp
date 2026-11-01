@@ -4,13 +4,13 @@ import { ensureHome, keyFile } from "./paths.js";
 import type { TaskItem } from "./types.js";
 
 export const KDF_ITERATIONS = 600_000;
-export const MIN_PASSPHRASE_LENGTH = 6; // init 与 encrypt 命令共用的口令下限
+export const MIN_PASSPHRASE_LENGTH = 6; // Shared by the init and encrypt commands.
 const ENVELOPE_PREFIX = "v1.AESGCM.";
 
 export interface DerivedKey {
   v: 1;
   salt: string; // b64url(16B)
-  key: string; // b64url(32B) —— 派生密钥，永不上传
+  key: string; // b64url(32B) derived key; never uploaded
   iter: number;
 }
 
@@ -41,7 +41,7 @@ export function encryptText(key: Buffer, plaintext: string): string {
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
   const ct = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
-  // ct||tag 布局与 Web Crypto AES-GCM 输出一致，三端互通
+  // The ct||tag layout matches Web Crypto AES-GCM output for cross-client compatibility.
   return `${ENVELOPE_PREFIX}${iv.toString("base64url")}.${Buffer.concat([ct, tag]).toString("base64url")}`;
 }
 
@@ -85,13 +85,13 @@ export function clearKeyFile(): void {
   } catch {}
 }
 
-// taskId 盲化：明文 taskId 含 "{slug}:{titleSlug}" 会泄露项目身份（§11 隐私边界）
+// Blind taskId because plaintext "{slug}:{titleSlug}" would reveal project identity.
 export function blindTaskId(key: Buffer, taskId: string): string {
   const hex = crypto.createHmac("sha256", key).update("task:" + taskId).digest("hex");
   return "t1_" + hex.slice(0, 20);
 }
 
-// 入队收口：有派生密钥则加密 title/progress/项目名、盲化 taskId 并附 blindId；无则保持明文（两种任务可共存）
+// Encrypt content and blind identifiers when a key exists; otherwise keep plaintext.
 export function finalizeForQueue(item: TaskItem): TaskItem {
   const dk = loadKeyFile();
   if (!dk || item.enc) return item;

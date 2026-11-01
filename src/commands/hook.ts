@@ -38,8 +38,8 @@ function readStdin(): Promise<string> {
   });
 }
 
-// hook 是 harness 同步等待的短进程：读 stdin → 写队列 → detached 派生 flush → 立即退出 0。
-// 任何内部错误都不得阻塞 harness（architecture.md §9.4 降级矩阵）。
+// A hook is a short process awaited by the harness: read stdin, append to the queue,
+// spawn a detached flush, and exit 0. Internal errors must never block the harness.
 export async function runHook(argv: string[]): Promise<void> {
   try {
     const args = parseHookArgs(argv);

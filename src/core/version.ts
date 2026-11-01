@@ -19,8 +19,8 @@ export interface UpdateCheckResult {
   checkedAt: string;
 }
 
-// 每日最多一次实查 npm registry（3s 超时挂在调用边界）；结果缓存 state.json。
-// 只提示不自动装；hook 路径永不调用本函数（写队列即退出）。
+// Query npm at most once daily with a 3-second timeout and cache results in state.json.
+// Only suggest updates; hooks never call this function because they exit after queueing.
 export async function checkForUpdate(
   currentVersion: string,
   opts: { registry?: string; force?: boolean } = {},
@@ -53,7 +53,7 @@ export async function checkForUpdate(
       checkedAt: state.lastVersionCheck,
     };
   } catch {
-    // 查询失败静默保留旧缓存；doctor --force 可重试
+    // Keep the previous cache on failure; doctor --force can retry explicitly.
     return {
       latestVersion: state.latestVersion,
       hasUpdate: false,

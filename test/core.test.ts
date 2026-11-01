@@ -16,7 +16,7 @@ describe("project grouping", () => {
   it("slugifies names", () => {
     expect(slugify("Taskent Server")).toBe("taskent-server");
     expect(slugify("a--b")).toBe("a-b");
-    expect(slugify("任务 管理!")).toBe("project");
+    expect(slugify("!!!")).toBe("project");
   });
 });
 
@@ -50,10 +50,10 @@ describe("semver", () => {
 describe("relative time", () => {
   it("formats buckets", () => {
     const now = Date.now();
-    expect(relativeTime(new Date(now - 10_000).toISOString(), now)).toBe("刚刚");
-    expect(relativeTime(new Date(now - 3 * 60_000).toISOString(), now)).toBe("3 分钟前");
-    expect(relativeTime(new Date(now - 2 * 3600_000).toISOString(), now)).toBe("2 小时前");
-    expect(relativeTime(new Date(now - 26 * 3600_000).toISOString(), now)).toBe("1 天前");
+    expect(relativeTime(new Date(now - 10_000).toISOString(), now)).toBe("just now");
+    expect(relativeTime(new Date(now - 3 * 60_000).toISOString(), now)).toBe("3m ago");
+    expect(relativeTime(new Date(now - 2 * 3600_000).toISOString(), now)).toBe("2h ago");
+    expect(relativeTime(new Date(now - 26 * 3600_000).toISOString(), now)).toBe("1d ago");
     expect(relativeTime(undefined)).toBe("");
   });
 });

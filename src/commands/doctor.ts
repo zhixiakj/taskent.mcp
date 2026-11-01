@@ -94,7 +94,7 @@ export async function runDoctor(argv: string[]): Promise<void> {
     } catch (err) {
       line(false, "server", `${config.serverUrl} unreachable: ${err instanceof Error ? err.message : String(err)}`);
     }
-    // 带鉴权探针：区分「令牌失效 401」与网络错误（/health 本身无鉴权，看不出 401）
+    // Authenticated probe distinguishes an invalid token (401) from network errors.
     try {
       const me = await getWhoami(config.serverUrl, config.token);
       line(

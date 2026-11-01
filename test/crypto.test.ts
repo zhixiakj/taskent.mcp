@@ -14,7 +14,7 @@ import {
 import type { TaskItem } from "../src/core/types.js";
 
 const SALT = "c2FsdDEyMzQ1Njc4OTA"; // b64url-ish fixture
-const TEST_ITER = 1_000; // 测试用低迭代，生产行为由 doctor/init 走 600k
+const TEST_ITER = 1_000; // Keep tests fast; production uses 600k iterations.
 
 let tmp: string;
 
@@ -57,10 +57,10 @@ describe("key derivation", () => {
 describe("envelope roundtrip", () => {
   it("encrypts and decrypts", async () => {
     const key = await deriveKey("pass", SALT, TEST_ITER);
-    const env = encryptText(key, "任务 title with 中文 + emoji 🎉");
+    const env = encryptText(key, "Task title with Unicode + emoji 🎉");
     expect(env.startsWith("v1.AESGCM.")).toBe(true);
-    expect(env).not.toContain("任务");
-    expect(decryptText(key, env)).toBe("任务 title with 中文 + emoji 🎉");
+    expect(env).not.toContain("Task title");
+    expect(decryptText(key, env)).toBe("Task title with Unicode + emoji 🎉");
   });
 
   it("fails on tampered ciphertext (AEAD)", async () => {
@@ -107,7 +107,7 @@ describe("finalizeForQueue", () => {
     expect(out.progress).toBeUndefined();
     expect(out.project.slug).toBeUndefined();
     expect(out.project.blindId).toMatch(/^b1_[0-9a-f]{16}$/);
-    // taskId 也盲化：不泄露 slug 与 title slug
+    // Blind taskId as well so it does not reveal the project or title slug.
     expect(out.taskId).toMatch(/^t1_[0-9a-f]{20}$/);
     expect(out.taskId).not.toContain("demo");
     expect(JSON.stringify(out)).not.toContain("secret task title");

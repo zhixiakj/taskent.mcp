@@ -44,7 +44,8 @@ function gitRemoteName(gitRoot: string): string | null {
   }
 }
 
-// 归组规则（architecture.md §5）：只上报仓库名/目录名，绝不带本地绝对路径
+// Grouping rule (architecture.md §5): report only repository or directory names,
+// never local absolute paths.
 export function resolveProject(cwd: string): { slug: string; name: string } {
   const gitRoot = findGitRoot(cwd);
   if (!gitRoot) {

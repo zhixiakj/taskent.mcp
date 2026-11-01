@@ -11,7 +11,7 @@ interface InitFlags {
   harness?: string;
 }
 
-// 托管服务唯一入口：server 闭源、不存在自托管场景，init 不提问也不提供覆盖项
+// The hosted service is the only entry point; init does not ask for a server override.
 const SERVER_URL = "https://app.taskent.io";
 
 export function parseInitFlags(argv: string[]): InitFlags {
@@ -41,9 +41,9 @@ function askUrlSnippet(harness: string): string {
   );
 }
 
-// ZCode：MCP 与 hooks 同在 ~/.zcode/cli/config.json，且配置文件 hooks 需要
-// hooks.enabled + events 嵌套（字段依据 docs/mcp-PLAN.md T1 摸底：ZCode 3.16.3 实测，
-// stdin payload 为 Claude Code 兼容超集；事件白名单无 Notification）
+// ZCode stores MCP and hooks in ~/.zcode/cli/config.json. Hooks require
+// hooks.enabled and an events wrapper. Its stdin payload is Claude Code-compatible,
+// but ZCode does not provide a Notification event.
 function zcodeConfigSnippets(): { mcp: string; hooks: string } {
   return {
     mcp: JSON.stringify(
@@ -154,8 +154,8 @@ export async function runInit(argv: string[]): Promise<void> {
     };
     saveConfig(config);
 
-    // 可选端到端加密（architecture §11）：口令派生密钥只落本地（带 token 取 per-user 盐）。
-    // 提示语不含可被照抄的单词；长度校验与 encrypt 命令同一阈值，不合格重问而非放行
+    // Optional E2EE (architecture §11): derive and cache the key locally, using
+    // the token to fetch a per-user salt. Reprompt when the passphrase is too short.
     let passphrase = "";
     for (;;) {
       passphrase = (await rl.question("encryption passphrase (press Enter for plaintext mode): ")).trim();

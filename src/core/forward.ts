@@ -24,8 +24,8 @@ export function backoffBlocked(state: { nextAttemptAt?: string }, now = Date.now
   return state.nextAttemptAt !== undefined && Date.parse(state.nextAttemptAt) > now;
 }
 
-// flush 全流程：锁互斥 → 批量 POST → 成功删行；失败退避（1m/5m/30m 封顶）。
-// at-least-once：重发由服务端 upsert 幂等 + 事件按状态变化派生兜底，无重复副作用。
+// Flush flow: acquire the lock, POST batches, and remove lines only after success.
+// Back off for 1m/5m/30m. At-least-once delivery is made safe by idempotent upserts.
 export async function flushOnce(config: TaskentConfig | null = loadConfig()): Promise<FlushStatus> {
   if (!config) return { status: "no-config" };
   ensureHome();
@@ -49,7 +49,7 @@ export async function flushOnce(config: TaskentConfig | null = loadConfig()): Pr
       } catch (err) {
         const apiErr = err instanceof ApiError ? err : null;
         if (apiErr && apiErr.status === 400) {
-          // 载荷被拒（白名单越界）：隔离到 dead.jsonl，避免毒丸卡住整个队列
+          // Quarantine rejected payloads so one poison item cannot block the queue.
           appendDeadLetters(raws);
           dropFirstN(raws.length);
           continue;
@@ -59,7 +59,7 @@ export async function flushOnce(config: TaskentConfig | null = loadConfig()): Pr
         state.nextAttemptAt = new Date(Date.now() + nextDelayMs(level)).toISOString();
         saveState(state);
         if (apiErr && apiErr.status === 401) {
-          // 401 是凭证问题而非网络抖动：清掉退避，换新令牌后下一次 flush 立即执行
+          // Clear backoff for credential errors so a replacement token takes effect immediately.
           const s = loadState();
           s.backoffLevel = 0;
           delete s.nextAttemptAt;

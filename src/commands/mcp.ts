@@ -112,7 +112,7 @@ export async function runMcp(): Promise<void> {
     },
   );
 
-  // stdout 是 MCP 协议通道，一切日志走 stderr
+  // stdout is the MCP protocol channel; all logs go to stderr.
   const update = await checkForUpdate(VERSION);
   if (update.hasUpdate && update.latestVersion) {
     console.error(`taskent ${update.latestVersion} available (current ${VERSION}); upgrade: taskent upgrade`);
@@ -123,8 +123,8 @@ export async function runMcp(): Promise<void> {
   }, 60_000);
   timer.unref();
 
-  // 机器心跳（machines 体系）：启动即发 + 每 10 分钟一次；presence 数据，
-  // 失败只记 stderr 不重试（下个间隔自愈），绝不影响 MCP 协议与 flush
+  // Send machine presence at startup and every 10 minutes. Log failures without
+  // retrying; the next interval recovers automatically without affecting MCP or flush.
   const beat = () => {
     const config = loadConfig();
     if (!config || !config.machine) return;
