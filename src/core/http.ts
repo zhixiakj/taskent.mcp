@@ -60,6 +60,34 @@ export async function postIngest(
   throw new ApiError(res.status, `ingest ${res.status}: ${text.slice(0, 200)}`);
 }
 
+/**
+ * POST /heartbeat（machines 体系）：presence 数据——失败由调用方吞掉即可，
+ * 不重试不排队（丢一次心跳无影响，下个间隔自愈）。
+ */
+export async function postHeartbeat(
+  serverUrl: string,
+  token: string,
+  payload: { machine: string; harness?: string; clientVersion?: string },
+  timeoutMs = 10_000,
+): Promise<void> {
+  const res = await request(
+    joinUrl(serverUrl, "/heartbeat"),
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    },
+    timeoutMs,
+  );
+  if (res.status !== 200) {
+    const text = await res.text().catch(() => "");
+    throw new ApiError(res.status, `heartbeat ${res.status}: ${text.slice(0, 200)}`);
+  }
+}
+
 export interface ServerTask extends TaskItem {
   createdAt?: string;
   updatedAt?: string;

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { loadConfig } from "../core/config.js";
 import { blindId, decryptText, finalizeForQueue, loadKeyFile } from "../core/crypto.js";
 import { flushOnce } from "../core/forward.js";
-import { getOverview, type ServerTask } from "../core/http.js";
+import { getOverview, postHeartbeat, type ServerTask } from "../core/http.js";
 import { VERSION } from "../core/meta.js";
 import { appendItems, queueDepth } from "../core/queue.js";
 import { resolveProject, slugify } from "../core/project.js";
@@ -122,6 +122,21 @@ export async function runMcp(): Promise<void> {
     void flushOnce().catch((err) => console.error(`flush: ${err}`));
   }, 60_000);
   timer.unref();
+
+  // 机器心跳（machines 体系）：启动即发 + 每 10 分钟一次；presence 数据，
+  // 失败只记 stderr 不重试（下个间隔自愈），绝不影响 MCP 协议与 flush
+  const beat = () => {
+    const config = loadConfig();
+    if (!config || !config.machine) return;
+    postHeartbeat(config.serverUrl, config.token, {
+      machine: config.machine,
+      ...(currentHarness() !== "unknown" ? { harness: currentHarness() } : {}),
+      clientVersion: VERSION,
+    }).catch((err) => console.error(`heartbeat: ${err}`));
+  };
+  beat();
+  const beatTimer = setInterval(beat, 600_000);
+  beatTimer.unref();
 
   await server.connect(new StdioServerTransport());
 }
