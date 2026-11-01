@@ -4,6 +4,7 @@ import { ensureHome, keyFile } from "./paths.js";
 import type { TaskItem } from "./types.js";
 
 export const KDF_ITERATIONS = 600_000;
+export const MIN_PASSPHRASE_LENGTH = 6; // init 与 encrypt 命令共用的口令下限
 const ENVELOPE_PREFIX = "v1.AESGCM.";
 
 export interface DerivedKey {

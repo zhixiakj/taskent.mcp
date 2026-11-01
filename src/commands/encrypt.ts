@@ -4,6 +4,7 @@ import {
   decryptText,
   deriveKey,
   encryptText,
+  MIN_PASSPHRASE_LENGTH,
   saveKeyFile,
 } from "../core/crypto.js";
 import { getKdf } from "../core/http.js";
@@ -54,8 +55,8 @@ export async function runEncrypt(argv: string[]): Promise<void> {
       rl.close();
     }
   }
-  if (!passphrase || passphrase.length < 6) {
-    console.error("passphrase too short (min 6 chars); aborted");
+  if (!passphrase || passphrase.length < MIN_PASSPHRASE_LENGTH) {
+    console.error(`passphrase too short (min ${MIN_PASSPHRASE_LENGTH} chars); aborted`);
     process.exitCode = 1;
     return;
   }

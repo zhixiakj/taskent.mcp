@@ -1,6 +1,7 @@
 import os from "node:os";
 import readline from "node:readline/promises";
 import { saveConfig, type TaskentConfig } from "../core/config.js";
+import { MIN_PASSPHRASE_LENGTH } from "../core/crypto.js";
 import { enableEncryption } from "./encrypt.js";
 import { ensureHome } from "../core/paths.js";
 
@@ -153,8 +154,16 @@ export async function runInit(argv: string[]): Promise<void> {
     };
     saveConfig(config);
 
-    // 可选端到端加密（architecture §11）：口令派生密钥只落本地（带 token 取 per-user 盐）
-    const passphrase = (await rl.question("encryption passphrase (empty = plaintext mode): ")).trim();
+    // 可选端到端加密（architecture §11）：口令派生密钥只落本地（带 token 取 per-user 盐）。
+    // 提示语不含可被照抄的单词；长度校验与 encrypt 命令同一阈值，不合格重问而非放行
+    let passphrase = "";
+    for (;;) {
+      passphrase = (await rl.question("encryption passphrase (press Enter for plaintext mode): ")).trim();
+      if (passphrase.length === 0 || passphrase.length >= MIN_PASSPHRASE_LENGTH) break;
+      console.error(
+        `passphrase too short (min ${MIN_PASSPHRASE_LENGTH} chars; press Enter for plaintext mode)`,
+      );
+    }
     if (passphrase.length > 0) {
       const encResult = await enableEncryption(serverUrl, passphrase, token);
       if (encResult.ok) {
