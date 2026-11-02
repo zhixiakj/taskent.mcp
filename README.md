@@ -49,6 +49,7 @@ confirmed before anything is written:
 | Cursor | `~/.cursor/mcp.json` | MCP |
 | OpenCode | `~/.config/opencode/opencode.json` | MCP |
 | DeepSeek Harness | `~/.dsh/cordis.patch.yml` (appends a Cordis patch) | MCP |
+| Kimi Code | `~/.kimi-code/mcp.json` + `~/.kimi-code/config.toml` (hooks appended) | hooks (incl. waiting-for-input) + MCP |
 | Codex | — (prints a `config.toml` snippet) | MCP, manual paste for now |
 
 Run `taskent add agent <harness>` directly, or pick from a list (`taskent add agent`) that
@@ -139,7 +140,7 @@ unrecoverable.
 | Command | Purpose |
 |---|---|
 | `taskent init` | Interactive setup: token, machine name, primary harness |
-| `taskent add agent [HARNESS] [--yes]` | Auto-register taskent in an agent (zcode, claude-code, gemini, cursor, opencode, deepseek; codex prints a snippet) |
+| `taskent add agent [HARNESS] [--yes]` | Auto-register taskent in an agent (zcode, claude-code, gemini, cursor, opencode, deepseek, kimi; codex prints a snippet) |
 | `taskent mcp` | Start the MCP server (stdio, for harness registration) |
 | `taskent hook --harness H --event E` | Hooks entry point (reads JSON payload from stdin) |
 | `taskent encrypt [--passphrase P]` | Enable/reset end-to-end encryption |
@@ -165,7 +166,7 @@ to the server. Config, queue and keys live under `~/.taskent/`.
 ## Status
 
 v0.2.0 — early access. Multi-user accounts (GitHub/Google sign-in, per-user data isolation, per-machine collector tokens) landed in 0.2.0. The collector is functional (queue, hooks, MCP, E2EE, doctor).
-Since 0.2.8, `taskent add agent` configures harnesses automatically (ZCode, Claude Code, Gemini, Cursor, OpenCode, DeepSeek Harness; Codex prints a snippet).
+Since 0.2.8, `taskent add agent` configures harnesses automatically (ZCode, Claude Code, Gemini, Cursor, OpenCode, DeepSeek Harness, Kimi Code; Codex prints a snippet).
 
 ## License
 

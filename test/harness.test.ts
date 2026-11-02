@@ -4,14 +4,18 @@ import os from "node:os";
 import path from "node:path";
 import {
   HARNESSES,
+  buildAppendPlan,
   dshAppendSpec,
   findHarness,
   hookEventPresent,
+  kimiHooksAppendSpec,
   looksLikeYamlPatchList,
   mergeClaudeSettings,
   mergeMcpServers,
   mergeOpencode,
   mergeZcodeConfig,
+  tomlAppendSafe,
+  type AppendSpec,
 } from "../src/core/harness.js";
 import { backupFile, readJsonFile, writeJsonAtomic, writeTextAtomic } from "../src/core/jsonfile.js";
 
@@ -184,7 +188,71 @@ describe("findHarness", () => {
     expect(findHarness("cc")?.id).toBe("claude-code");
     expect(findHarness("ZCode")?.id).toBe("zcode");
     expect(findHarness("dsh")?.id).toBe("deepseek");
+    expect(findHarness("kimi-code")?.id).toBe("kimi");
     expect(findHarness("nope")).toBeUndefined();
+  });
+});
+
+describe("kimi append target", () => {
+  const kimiSpec = HARNESSES.find((h) => h.id === "kimi")!;
+
+  it("is a full harness: mcp.json merge + config.toml hooks append", () => {
+    expect(kimiSpec.kind).toBe("full");
+    const [mcp, hooks] = kimiSpec.targets as [{ relPath: string }, { relPath: string; append: { marker: string } }];
+    expect(mcp.relPath).toBe(".kimi-code/mcp.json");
+    expect(hooks.relPath).toBe(".kimi-code/config.toml");
+    expect(hooks.append.marker).toBe("taskent hook --harness kimi");
+  });
+
+  it("builds [[hooks]] TOML blocks with the TodoList matcher and all three events", () => {
+    const { marker, block } = kimiHooksAppendSpec();
+    expect(block).toContain(marker);
+    expect(block).toContain('matcher = "TodoList"');
+    for (const ev of ["PostToolUse", "Stop", "Notification"]) {
+      expect(block).toContain(`event = "${ev}"`);
+    }
+    expect((block.match(/\[\[hooks\]\]/g) ?? []).length).toBe(3);
+  });
+
+  it("tomlAppendSafe accepts complete documents and rejects truncated ones", () => {
+    expect(tomlAppendSafe("")).toBe(true);
+    expect(tomlAppendSafe("# comment\n")).toBe(true);
+    expect(tomlAppendSafe('model = "kimi"\n[workspace]\ndirs = ["a"]\n')).toBe(true);
+    expect(tomlAppendSafe('key = "value" # trailing comment')).toBe(true);
+    expect(tomlAppendSafe("arr = [1,")).toBe(false);
+    expect(tomlAppendSafe("tbl = {")).toBe(false);
+    expect(tomlAppendSafe("key =")).toBe(false);
+    expect(tomlAppendSafe('s = """')).toBe(false);
+  });
+});
+
+describe("buildAppendPlan", () => {
+  // Real append specs always embed the marker inside the block (asserted per
+  // spec above) — that is what makes re-runs no-ops.
+  const spec: AppendSpec = {
+    marker: "taskent hook --harness kimi",
+    block: '[[hooks]]\nevent = "Stop"\ncommand = "taskent hook --harness kimi --event Stop"',
+  };
+
+  it("is a no-op when the marker is already present (idempotency)", () => {
+    const once = buildAppendPlan('model = "k"\n', spec);
+    if (once.status !== "append") throw new Error("expected append");
+    expect(buildAppendPlan(once.nextText, spec)).toEqual({ status: "up-to-date" });
+  });
+
+  it("appends after a blank separator and fixes a missing trailing newline", () => {
+    const a = buildAppendPlan('model = "k"', spec);
+    if (a.status !== "append") throw new Error("expected append");
+    expect(a.nextText).toBe('model = "k"\n\n' + spec.block + '\n');
+    expect(buildAppendPlan(null, spec)).toEqual({ status: "append", nextText: spec.block + "\n" });
+  });
+
+  it("returns the validator error instead of appending", () => {
+    const guarded: AppendSpec = { ...spec, validate: () => "not a YAML patch list (unexpected first entry)" };
+    expect(buildAppendPlan("insert: {}", guarded)).toEqual({
+      status: "error",
+      error: "not a YAML patch list (unexpected first entry)",
+    });
   });
 });
 

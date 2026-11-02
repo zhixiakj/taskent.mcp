@@ -39,6 +39,7 @@ taskent doctor           # 体检:配置 / 版本 / 队列积压 / 各 agent 注
 | Cursor | `~/.cursor/mcp.json` | 仅 MCP |
 | OpenCode | `~/.config/opencode/opencode.json` | 仅 MCP |
 | DeepSeek Harness | `~/.dsh/cordis.patch.yml`(追加 Cordis 补丁) | 仅 MCP |
+| Kimi Code | `~/.kimi-code/mcp.json` + `~/.kimi-code/config.toml`(追加 hooks) | hooks(含「等待输入」)+ MCP |
 | Codex | —(打印 `config.toml` 片段) | 仅 MCP,暂需手工粘贴 |
 
 `taskent add agent <harness>` 直接指定,`taskent add agent` 交互选择(自动标注哪些 agent 已检出、哪些已配置)。想手工粘贴、或用表外的 harness?下面这些参考块就是 `add agent` 所写的内容:
@@ -116,7 +117,7 @@ taskent encrypt           # 设置口令;密钥本地派生(PBKDF2-SHA256, 600k 
 | 命令 | 用途 |
 |---|---|
 | `taskent init` | 交互式配置:令牌、机器名、主 harness |
-| `taskent add agent [HARNESS] [--yes]` | 自动把 taskent 注册进编码代理(zcode、claude-code、gemini、cursor、opencode、deepseek;codex 打印片段) |
+| `taskent add agent [HARNESS] [--yes]` | 自动把 taskent 注册进编码代理(zcode、claude-code、gemini、cursor、opencode、deepseek、kimi;codex 打印片段) |
 | `taskent mcp` | 启动 MCP server(stdio,供 harness 注册) |
 | `taskent hook --harness H --event E` | hooks 入口(stdin 读 JSON 负载) |
 | `taskent encrypt [--passphrase P]` | 开启/重设端到端加密 |
@@ -136,7 +137,7 @@ taskent encrypt           # 设置口令;密钥本地派生(PBKDF2-SHA256, 600k 
 
 ## 状态
 
-v0.2.0,早期访问。0.2.0 起为多用户账号体系(GitHub/Google 登录、数据按用户隔离、每机一枚可吊销的采集令牌)。采集链路(队列/hooks/MCP/E2EE/doctor)已可用;0.2.8 起 `taskent add agent` 自动配置各 harness(ZCode、Claude Code、Gemini、Cursor、OpenCode、DeepSeek Harness;Codex 打印片段)。
+v0.2.0,早期访问。0.2.0 起为多用户账号体系(GitHub/Google 登录、数据按用户隔离、每机一枚可吊销的采集令牌)。采集链路(队列/hooks/MCP/E2EE/doctor)已可用;`taskent add agent` 自动配置各 harness(0.2.8 起 ZCode、Claude Code、Gemini、Cursor、OpenCode、DeepSeek Harness;0.2.9 起 Kimi Code;Codex 打印片段)。
 
 ## License
 

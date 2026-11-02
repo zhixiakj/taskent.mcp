@@ -21,6 +21,8 @@ const TODO_STATUS_MAP: Record<string, TaskStatus> = {
 interface TodoEntry {
   content?: string;
   subject?: string;
+  // Kimi Code's TodoList tool names the item field `title`.
+  title?: string;
   activeForm?: string;
   status?: string;
 }
@@ -58,7 +60,7 @@ function todosToTasks(ctx: HookContext, toolInput: unknown): TaskItem[] {
   const out: TaskItem[] = [];
   for (const entry of list as TodoEntry[]) {
     if (typeof entry !== "object" || entry === null) continue;
-    const title = entry.content ?? entry.subject;
+    const title = entry.content ?? entry.subject ?? entry.title;
     const status = TODO_STATUS_MAP[entry.status ?? ""];
     if (typeof title !== "string" || title.length === 0 || status === undefined) continue;
     const taskId = `${ctx.project.slug}:${slugify(title)}`;
@@ -72,7 +74,10 @@ function claudeCodeToTasks(event: string, payload: Record<string, unknown>, ctx:
   switch (event) {
     case "PostToolUse": {
       const toolName = payload.tool_name;
-      if (toolName === "TodoWrite" || toolName === "Task" || toolName === "TaskWrite") {
+      if (
+        toolName === "TodoWrite" || toolName === "Task" || toolName === "TaskWrite" ||
+        toolName === "TodoList" // Kimi Code's todo tool
+      ) {
         return todosToTasks(ctx, payload.tool_input);
       }
       return [];
@@ -98,6 +103,13 @@ function zcodeToTasks(event: string, payload: Record<string, unknown>, ctx: Hook
   return claudeCodeToTasks(event, payload, ctx);
 }
 
+// Kimi Code's hook payload is a Claude Code-compatible superset (snake_case
+// tool_name/tool_input, session_id on every event); its todo tool is `TodoList`
+// with {title, status} items, handled inside claudeCodeToTasks/todosToTasks.
+function kimiToTasks(event: string, payload: Record<string, unknown>, ctx: HookContext): TaskItem[] {
+  return claudeCodeToTasks(event, payload, ctx);
+}
+
 export function toTaskItems(
   harness: string,
   event: string,
@@ -111,6 +123,8 @@ export function toTaskItems(
       return claudeCodeToTasks(event, record, ctx);
     case "zcode":
       return zcodeToTasks(event, record, ctx);
+    case "kimi":
+      return kimiToTasks(event, record, ctx);
     default:
       return [];
   }

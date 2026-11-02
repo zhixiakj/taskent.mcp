@@ -79,3 +79,44 @@ describe("claude-code hooks", () => {
     expect(items).toHaveLength(1);
   });
 });
+
+describe("kimi hooks", () => {
+  const kimiCtx: HookContext = { ...ctx, harness: "kimi" };
+
+  it("maps TodoList {title, status} items to tasks", () => {
+    const items = toTaskItems(
+      "kimi",
+      "PostToolUse",
+      {
+        hook_event_name: "PostToolUse",
+        session_id: "session_abc",
+        tool_name: "TodoList",
+        tool_input: {
+          todos: [
+            { title: "write docs", status: "done" },
+            { title: "fix bug", status: "in_progress" },
+            { title: "release", status: "pending" },
+          ],
+        },
+        cwd: "/tmp/demo",
+      },
+      kimiCtx,
+    );
+    expect(items.map((t) => [t.taskId, t.status])).toEqual([
+      ["demo:write-docs", "done"],
+      ["demo:fix-bug", "doing"],
+      ["demo:release", "todo"],
+    ]);
+    expect(items[0]!.agent.harness).toBe("kimi");
+  });
+
+  it("Stop and Notification follow the Claude Code mapping", () => {
+    expect(toTaskItems("kimi", "Stop", { session_id: "abc-12345678" }, kimiCtx)).toHaveLength(1);
+    expect(toTaskItems("kimi", "Stop", { session_id: "abc-12345678" }, kimiCtx)[0]!.status).toBe("done");
+    expect(toTaskItems("kimi", "Notification", { session_id: "abc-12345678" }, kimiCtx)[0]!.status).toBe("blocked");
+  });
+
+  it("unrelated tools produce nothing", () => {
+    expect(toTaskItems("kimi", "PostToolUse", { tool_name: "Bash" }, kimiCtx)).toEqual([]);
+  });
+});

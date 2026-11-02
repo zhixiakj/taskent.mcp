@@ -14,7 +14,7 @@ usage:
   taskent init                    interactive setup (config + MCP/hooks snippets + optional E2EE)
   taskent add agent [HARNESS] [--yes]
                                   auto-register taskent in another agent (zcode, claude-code,
-                                  gemini, cursor, opencode, deepseek; codex prints a snippet)
+                                  gemini, cursor, opencode, deepseek, kimi; codex prints a snippet)
   taskent mcp                     run the MCP server (stdio; for harness registration)
   taskent hook --harness H --event E [--cwd DIR]
                                   harness hook entry (reads JSON payload on stdin)

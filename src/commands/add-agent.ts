@@ -4,10 +4,10 @@ import { loadConfig, saveConfig } from "../core/config.js";
 import {
   HARNESSES,
   askUrlSnippet,
+  buildAppendPlan,
   codexSnippet,
   findHarness,
   harnessFile,
-  looksLikeYamlPatchList,
   type HarnessSpec,
   type Json,
 } from "../core/harness.js";
@@ -171,21 +171,17 @@ export async function runAddAgent(argv: string[]): Promise<void> {
     for (const target of spec.targets) {
       const file = harnessFile(target.relPath);
       if ("append" in target) {
-        const text = readTextFile(file);
-        if (text !== null && text.includes(target.append.marker)) {
-          plans.push({ file, changes: [] });
-        } else if (text !== null && !looksLikeYamlPatchList(text)) {
-          console.error(`\n${file}: not a YAML patch list (unexpected first entry) — merge manually instead.`);
+        const plan = buildAppendPlan(readTextFile(file), target.append);
+        if (plan.status === "error") {
+          console.error(`\n${file}: ${plan.error} — merge manually instead.`);
           console.error("nothing was written.");
           process.exitCode = 1;
           return;
+        }
+        if (plan.status === "append") {
+          plans.push({ file, nextText: plan.nextText, changes: [`append: ${target.append.marker}`] });
         } else {
-          const base = text === null ? "" : text.endsWith("\n") ? text : `${text}\n`;
-          plans.push({
-            file,
-            nextText: `${base}${text === null ? "" : "\n"}${target.append.block}\n`,
-            changes: [`${target.append.marker} (Cordis insert patch)`],
-          });
+          plans.push({ file, changes: [] });
         }
         continue;
       }

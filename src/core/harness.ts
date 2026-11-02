@@ -28,11 +28,13 @@ export interface JsonTarget {
 }
 
 // Append target: non-JSON config we must not re-serialize (e.g. a YAML patch
-// list that may carry user comments and unrelated patches). We append one
-// self-contained block; the marker string detects an existing registration.
+// list or TOML hooks table that may carry user comments and unrelated entries).
+// We append one self-contained block; the marker string detects an existing
+// registration, and validate() rejects file shapes where appending is unsafe.
 export interface AppendSpec {
   marker: string;
   block: string;
+  validate?: (text: string) => string | null;
 }
 
 export interface AppendTarget {
@@ -257,6 +259,20 @@ export const HARNESSES: readonly HarnessSpec[] = [
     targets: [{ relPath: ".dsh/cordis.patch.yml", append: dshAppendSpec() }],
   },
   {
+    id: "kimi",
+    label: "Kimi Code",
+    kind: "full",
+    installPaths: [".kimi-code"],
+    targets: [
+      {
+        relPath: ".kimi-code/mcp.json",
+        merge: (c) => mergeMcpServers(c, "kimi"),
+        hasRegistration: mcpServersRegistered,
+      },
+      { relPath: ".kimi-code/config.toml", append: kimiHooksAppendSpec() },
+    ],
+  },
+  {
     id: "codex",
     label: "Codex",
     kind: "print-only",
@@ -265,7 +281,7 @@ export const HARNESSES: readonly HarnessSpec[] = [
   },
 ];
 
-const ALIASES: Record<string, string> = { claude: "claude-code", cc: "claude-code", dsh: "deepseek" };
+const ALIASES: Record<string, string> = { claude: "claude-code", cc: "claude-code", dsh: "deepseek", "kimi-code": "kimi" };
 
 export function findHarness(id: string): HarnessSpec | undefined {
   const norm = id.trim().toLowerCase();
@@ -293,7 +309,54 @@ export function dshAppendSpec(): AppendSpec {
     "        env:",
     "          TASKENT_HARNESS: deepseek",
   ].join("\n");
-  return { marker, block };
+  return {
+    marker,
+    block,
+    validate: (text) => (looksLikeYamlPatchList(text) ? null : "not a YAML patch list (unexpected first entry)"),
+  };
+}
+
+// Kimi Code (Moonshot): MCP servers live in ~/.kimi-code/mcp.json (Claude-style
+// mcpServers), while lifecycle hooks are [[hooks]] array-of-tables in
+// ~/.kimi-code/config.toml — TOML, so append. Their todo tool is named TodoList
+// (not TodoWrite); the matcher uses the bare tool name, which is safe under both
+// exact-match and regex matcher semantics. Payload is Claude-Code-compatible
+// (snake_case tool_name/tool_input, session_id on every event).
+export function kimiHooksAppendSpec(): AppendSpec {
+  const marker = "taskent hook --harness kimi";
+  const block = [
+    "[[hooks]]",
+    'event = "PostToolUse"',
+    'matcher = "TodoList"',
+    `command = "${hookCommand("kimi", "PostToolUse")}"`,
+    "",
+    "[[hooks]]",
+    'event = "Stop"',
+    `command = "${hookCommand("kimi", "Stop")}"`,
+    "",
+    "[[hooks]]",
+    'event = "Notification"',
+    `command = "${hookCommand("kimi", "Notification")}"`,
+  ].join("\n");
+  return {
+    marker,
+    block,
+    validate: (text) => (tomlAppendSafe(text) ? null : "ends inside an open construct (truncated TOML?)"),
+  };
+}
+
+// Appending a [[table]] block to a TOML document is well-defined as long as the
+// document is complete. We cannot fully parse TOML here; this cheap check only
+// rejects files whose last line looks truncated (fail closed).
+export function tomlAppendSafe(text: string): boolean {
+  const lines = text.split("\n").filter((l) => {
+    const t = l.trim();
+    return t !== "" && !t.startsWith("#");
+  });
+  const last = lines[lines.length - 1];
+  if (last === undefined) return true;
+  const t = last.trim();
+  return !/[={[,]$/.test(t) && !t.endsWith('"""') && !t.endsWith("'''");
 }
 
 // Conservative guard before appending: the document must look like a top-level
@@ -306,6 +369,23 @@ export function looksLikeYamlPatchList(text: string): boolean {
     return t.startsWith("- ");
   }
   return true;
+}
+
+export type AppendPlan =
+  | { status: "up-to-date" }
+  | { status: "append"; nextText: string }
+  | { status: "error"; error: string };
+
+// Pure planning for append targets: marker present -> no-op; validate rejects
+// unsafe shapes -> error; otherwise append the block after a blank separator.
+export function buildAppendPlan(text: string | null, append: AppendSpec): AppendPlan {
+  if (text !== null && text.includes(append.marker)) return { status: "up-to-date" };
+  if (text !== null) {
+    const invalid = append.validate?.(text) ?? null;
+    if (invalid) return { status: "error", error: invalid };
+  }
+  const base = text === null ? "" : text.endsWith("\n") ? text : `${text}\n`;
+  return { status: "append", nextText: `${base}${text === null ? "" : "\n"}${append.block}\n` };
 }
 
 // --- print-only snippets ------------------------------------------------------
