@@ -4,8 +4,8 @@
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 One dashboard for all your AI coding agents. This is the **collector**: it captures task-status
-changes from Claude Code, ZCode and other MCP-speaking harnesses and reports them to your
-[Taskent](https://taskent.io) server — reliably, and without ever getting in the agent's way.
+changes from Claude Code, ZCode and other MCP-speaking harnesses and reports them to
+[Taskent](https://taskent.io) — reliably, and without ever getting in the agent's way.
 
 [中文说明](README.zh-CN.md) · [Website](https://taskent.io) · [Dashboard](https://app.taskent.io)
 
@@ -29,15 +29,31 @@ changes from Claude Code, ZCode and other MCP-speaking harnesses and reports the
 
 ```bash
 npm install -g taskent   # hooks need the local binary (millisecond startup, offline-safe)
-taskent init             # interactive setup; prints ready-to-paste MCP + hooks snippets
-taskent doctor           # health check: config / version / queue / server connectivity
+taskent init             # interactive setup: token, machine name, primary harness
+taskent add agent        # register taskent in your agents — auto-writes their config
+taskent doctor           # health check: config / version / queue / harnesses / server
 ```
 
 Try without installing: `npx taskent init`.
 
-`taskent init` asks for your collector token, a machine name and your primary harness
-(`zcode` / `claude-code` / `other`), then prints harness-specific snippets to paste into
-your agent's config. The blocks below are what it prints (shown for reference):
+`taskent init` saves the machine config (token, machine name, primary harness). Then
+`taskent add agent` registers taskent in each agent automatically — MCP server plus task
+hooks, merged into the agent's own config file with a timestamped backup, idempotent and
+confirmed before anything is written:
+
+| Harness | Config written | What is captured |
+|---|---|---|
+| ZCode | `~/.zcode/cli/config.json` | hooks + MCP (no `Notification` event on ZCode) |
+| Claude Code | `~/.claude/settings.json` + `~/.claude.json` | hooks (incl. waiting-for-input) + MCP |
+| Gemini CLI | `~/.gemini/settings.json` | MCP (manual task updates + heartbeat) |
+| Cursor | `~/.cursor/mcp.json` | MCP |
+| OpenCode | `~/.config/opencode/opencode.json` | MCP |
+| DeepSeek Harness | `~/.dsh/cordis.patch.yml` (appends a Cordis patch) | MCP |
+| Codex | — (prints a `config.toml` snippet) | MCP, manual paste for now |
+
+Run `taskent add agent <harness>` directly, or pick from a list (`taskent add agent`) that
+shows which agents are detected and which are already configured. Prefer pasting by hand,
+or using a harness not listed? The reference blocks below are exactly what `add agent` writes.
 
 ### ZCode
 
@@ -122,7 +138,8 @@ unrecoverable.
 
 | Command | Purpose |
 |---|---|
-| `taskent init` | Interactive setup; prints MCP/hooks registration snippets |
+| `taskent init` | Interactive setup: token, machine name, primary harness |
+| `taskent add agent [HARNESS] [--yes]` | Auto-register taskent in an agent (zcode, claude-code, gemini, cursor, opencode, deepseek; codex prints a snippet) |
 | `taskent mcp` | Start the MCP server (stdio, for harness registration) |
 | `taskent hook --harness H --event E` | Hooks entry point (reads JSON payload from stdin) |
 | `taskent encrypt [--passphrase P]` | Enable/reset end-to-end encryption |
@@ -147,8 +164,8 @@ to the server. Config, queue and keys live under `~/.taskent/`.
 
 ## Status
 
-v0.2.0 — early access. Multi-user accounts (GitHub/Google sign-in, per-user data isolation, per-machine collector tokens) landed in 0.2.0. The collector is functional (queue, hooks, MCP, E2EE, doctor);
-onboarding is currently manual (paste snippets). Automatic harness configuration is next.
+v0.2.0 — early access. Multi-user accounts (GitHub/Google sign-in, per-user data isolation, per-machine collector tokens) landed in 0.2.0. The collector is functional (queue, hooks, MCP, E2EE, doctor).
+Since 0.2.8, `taskent add agent` configures harnesses automatically (ZCode, Claude Code, Gemini, Cursor, OpenCode, DeepSeek Harness; Codex prints a snippet).
 
 ## License
 

@@ -2,6 +2,7 @@ import os from "node:os";
 import readline from "node:readline/promises";
 import { saveConfig, type TaskentConfig } from "../core/config.js";
 import { MIN_PASSPHRASE_LENGTH } from "../core/crypto.js";
+import { SERVER_URL, askUrlSnippet } from "../core/harness.js";
 import { enableEncryption } from "./encrypt.js";
 import { ensureHome } from "../core/paths.js";
 
@@ -10,9 +11,6 @@ interface InitFlags {
   machine?: string;
   harness?: string;
 }
-
-// The hosted service is the only entry point; init does not ask for a server override.
-const SERVER_URL = "https://app.taskent.io";
 
 export function parseInitFlags(argv: string[]): InitFlags {
   const flags: InitFlags = {};
@@ -23,22 +21,6 @@ export function parseInitFlags(argv: string[]): InitFlags {
     else if (a === "--harness") flags.harness = argv[++i];
   }
   return flags;
-}
-
-function askUrlSnippet(harness: string): string {
-  return JSON.stringify(
-    {
-      mcpServers: {
-        taskent: {
-          command: "npx",
-          args: ["-y", "taskent@latest", "mcp"],
-          env: { TASKENT_HARNESS: harness },
-        },
-      },
-    },
-    null,
-    2,
-  );
 }
 
 // ZCode stores MCP and hooks in ~/.zcode/cli/config.json. Hooks require
@@ -203,6 +185,9 @@ export async function runInit(argv: string[]): Promise<void> {
       console.log("   see the Setup section of the README: npmjs.com/package/taskent");
       console.log("\n2) Verify:\n   taskent doctor");
     }
+    console.log(
+      "\nTip: `taskent add agent` writes the MCP + hooks config automatically (zcode, claude-code, gemini, cursor, opencode).",
+    );
   } finally {
     rl.close();
   }

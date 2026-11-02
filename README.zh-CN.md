@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/taskent)](https://www.npmjs.com/package/taskent)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-把 AI 编码代理(Claude Code、ZCode 等)里的任务状态变化,可靠地采集并上报到你的 [Taskent](https://taskent.io) 服务端。上报链路永不阻塞 agent——先写本地队列,再异步转发,断网自动重传。
+把 AI 编码代理(Claude Code、ZCode 等)里的任务状态变化,可靠地采集并上报到 [Taskent](https://taskent.io)。上报链路永不阻塞 agent——先写本地队列,再异步转发,断网自动重传。
 
 [English](README.md) · [官网](https://taskent.io) · [总览看板](https://app.taskent.io)
 
@@ -22,13 +22,26 @@
 
 ```bash
 npm install -g taskent   # 推荐:hooks 需要本地二进制(毫秒启动、离线可用)
-taskent init             # 交互式配置 + 打印 MCP/hooks 两段可直接粘贴的注册片段
-taskent doctor           # 体检:配置 / 版本 / 队列积压 / 服务端连通
+taskent init             # 交互式配置:令牌、机器名、主 harness
+taskent add agent        # 接入各编码代理——自动写入其 MCP/hooks 配置
+taskent doctor           # 体检:配置 / 版本 / 队列积压 / 各 agent 注册 / 服务端连通
 ```
 
 免安装试用:`npx taskent init`。
 
-`init` 依次询问采集令牌、机器名、主 harness(`zcode` / `claude-code` / `other`),然后按 harness 打印对应配置片段。以下即打印内容(备查):
+`init` 保存机器级配置(令牌、机器名、主 harness),之后 `taskent add agent` 一条命令把 taskent 注册进各编码代理——MCP server 加任务 hooks,合并写入 agent 自己的配置文件:写前确认、写前自动备份(带时间戳)、幂等可重复执行。
+
+| Harness | 写入文件 | 采集能力 |
+|---|---|---|
+| ZCode | `~/.zcode/cli/config.json` | hooks + MCP(ZCode 无 `Notification` 事件) |
+| Claude Code | `~/.claude/settings.json` + `~/.claude.json` | hooks(含「等待输入」)+ MCP |
+| Gemini CLI | `~/.gemini/settings.json` | 仅 MCP(手动任务更新 + 心跳) |
+| Cursor | `~/.cursor/mcp.json` | 仅 MCP |
+| OpenCode | `~/.config/opencode/opencode.json` | 仅 MCP |
+| DeepSeek Harness | `~/.dsh/cordis.patch.yml`(追加 Cordis 补丁) | 仅 MCP |
+| Codex | —(打印 `config.toml` 片段) | 仅 MCP,暂需手工粘贴 |
+
+`taskent add agent <harness>` 直接指定,`taskent add agent` 交互选择(自动标注哪些 agent 已检出、哪些已配置)。想手工粘贴、或用表外的 harness?下面这些参考块就是 `add agent` 所写的内容:
 
 ### ZCode
 
@@ -102,7 +115,8 @@ taskent encrypt           # 设置口令;密钥本地派生(PBKDF2-SHA256, 600k 
 
 | 命令 | 用途 |
 |---|---|
-| `taskent init` | 交互式配置,输出 MCP/hooks 注册片段 |
+| `taskent init` | 交互式配置:令牌、机器名、主 harness |
+| `taskent add agent [HARNESS] [--yes]` | 自动把 taskent 注册进编码代理(zcode、claude-code、gemini、cursor、opencode、deepseek;codex 打印片段) |
 | `taskent mcp` | 启动 MCP server(stdio,供 harness 注册) |
 | `taskent hook --harness H --event E` | hooks 入口(stdin 读 JSON 负载) |
 | `taskent encrypt [--passphrase P]` | 开启/重设端到端加密 |
@@ -122,7 +136,7 @@ taskent encrypt           # 设置口令;密钥本地派生(PBKDF2-SHA256, 600k 
 
 ## 状态
 
-v0.2.0,早期访问。0.2.0 起为多用户账号体系(GitHub/Google 登录、数据按用户隔离、每机一枚可吊销的采集令牌)。采集链路(队列/hooks/MCP/E2EE/doctor)已可用;接入目前为手工粘贴配置片段,自动配置在计划中。
+v0.2.0,早期访问。0.2.0 起为多用户账号体系(GitHub/Google 登录、数据按用户隔离、每机一枚可吊销的采集令牌)。采集链路(队列/hooks/MCP/E2EE/doctor)已可用;0.2.8 起 `taskent add agent` 自动配置各 harness(ZCode、Claude Code、Gemini、Cursor、OpenCode、DeepSeek Harness;Codex 打印片段)。
 
 ## License
 

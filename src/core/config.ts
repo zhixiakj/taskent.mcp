@@ -7,6 +7,8 @@ export interface TaskentConfig {
   token: string;
   machine?: string;
   harness?: string;
+  /** All harnesses registered on this machine via `taskent add agent` (doctor checks each). */
+  harnesses?: string[];
 }
 
 export interface TaskentState {

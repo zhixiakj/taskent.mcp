@@ -6,6 +6,8 @@ import {
   encryptText,
   loadKeyFile,
 } from "../core/crypto.js";
+import { findHarness, harnessFile } from "../core/harness.js";
+import { readJsonFile, readTextFile } from "../core/jsonfile.js";
 import { ApiError, getHealthz, getKdf, getWhoami } from "../core/http.js";
 import { VERSION } from "../core/meta.js";
 import { configFile, deadLetterFile, flushLockDir, home } from "../core/paths.js";
@@ -58,6 +60,35 @@ export async function runDoctor(argv: string[]): Promise<void> {
   }
   const lockActive = fs.existsSync(flushLockDir());
   if (lockActive) line(true, "flush lock", "held (a flush is in progress)");
+
+  // Per-harness registration check: every harness recorded in config (plus the
+  // init-time primary) must still carry taskent's registration in its config file.
+  const harnessIds = config
+    ? [...new Set([...(config.harnesses ?? []), ...(config.harness ? [config.harness] : [])])]
+    : [];
+  for (const id of harnessIds) {
+    const spec = findHarness(id);
+    const target = spec?.targets.find((t) => "append" in t || t.hasRegistration !== undefined);
+    if (!target) {
+      line(true, `harness ${id}`, "no file registration to verify");
+      continue;
+    }
+    const file = harnessFile(target.relPath);
+    const ok =
+      "append" in target
+        ? (readTextFile(file)?.includes(target.append.marker) ?? false)
+        : (() => {
+            const read = readJsonFile(file);
+            return read.status === "ok" && !!target.hasRegistration?.(read.doc);
+          })();
+    line(
+      ok,
+      `harness ${id}`,
+      ok
+        ? `registered (${file})`
+        : `registration missing in ${file}; run: taskent add agent ${id}`,
+    );
+  }
 
   const dk = loadKeyFile();
   if (dk) {
