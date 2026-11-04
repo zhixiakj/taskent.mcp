@@ -68,25 +68,33 @@ export async function runDoctor(argv: string[]): Promise<void> {
     : [];
   for (const id of harnessIds) {
     const spec = findHarness(id);
-    const target = spec?.targets.find((t) => "append" in t || t.hasRegistration !== undefined);
-    if (!target) {
-      line(true, `harness ${id}`, "no file registration to verify");
+    const target = spec?.targets.find((t) => "append" in t || "marker" in t || t.hasRegistration !== undefined);
+    // A harness we cannot probe (unknown id, or no registration file we know
+    // of) must not pass silently — surface it so the user checks by hand.
+    if (!spec || !target) {
+      line(
+        false,
+        `harness ${id}`,
+        spec ? "no registration file known for this harness — verify manually" : "unknown harness in config — verify manually",
+      );
       continue;
     }
     const file = harnessFile(target.relPath);
     const ok =
       "append" in target
         ? (readTextFile(file)?.includes(target.append.marker) ?? false)
-        : (() => {
-            const read = readJsonFile(file);
-            return read.status === "ok" && !!target.hasRegistration?.(read.doc);
-          })();
+        : "marker" in target
+          ? (readTextFile(file)?.includes(target.marker) ?? false)
+          : (() => {
+              const read = readJsonFile(file);
+              return read.status === "ok" && !!target.hasRegistration?.(read.doc);
+            })();
     line(
       ok,
       `harness ${id}`,
       ok
         ? `registered (${file})`
-        : `registration missing in ${file}; run: taskent add agent ${id}`,
+        : `registration missing in ${file}; run: taskent add agent ${id}${spec.kind === "print-only" ? " (prints the snippet to add manually)" : ""}`,
     );
   }
 

@@ -42,7 +42,17 @@ export interface AppendTarget {
   append: AppendSpec;
 }
 
-export type HarnessTarget = JsonTarget | AppendTarget;
+// Verify-only target: taskent never writes this file (owned by another tool,
+// e.g. Codex's config.toml), but the marker lets doctor and `add agent` status
+// detection recognize a registration the user added by hand.
+export interface VerifyTarget {
+  relPath: string;
+  // String whose presence means taskent's registration exists (same semantics
+  // as AppendSpec.marker).
+  marker: string;
+}
+
+export type HarnessTarget = JsonTarget | AppendTarget | VerifyTarget;
 
 export interface HarnessSpec {
   id: string;
@@ -277,7 +287,9 @@ export const HARNESSES: readonly HarnessSpec[] = [
     label: "Codex",
     kind: "print-only",
     installPaths: [".codex/config.toml"],
-    targets: [],
+    // We never write codex's TOML — but the snippet we print plants this table
+    // header, so doctor can verify it and `add agent` can show "configured ✓".
+    targets: [{ relPath: ".codex/config.toml", marker: "[mcp_servers.taskent]" }],
   },
 ];
 
@@ -407,7 +419,9 @@ export function askUrlSnippet(harness: string): string {
   );
 }
 
-// Codex keeps its config in TOML managed by codex itself — snippet only for now.
+// Codex keeps its config in TOML managed by codex itself — snippet only. The
+// [mcp_servers.taskent] table header doubles as the verify marker above; keep
+// the two in sync.
 export function codexSnippet(): string {
   return [
     "# ~/.codex/config.toml — append these tables (keep existing content)",

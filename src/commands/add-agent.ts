@@ -10,6 +10,7 @@ import {
   harnessFile,
   type HarnessSpec,
   type Json,
+  type VerifyTarget,
 } from "../core/harness.js";
 import { backupFile, readJsonFile, readTextFile, writeJsonAtomic, writeTextAtomic } from "../core/jsonfile.js";
 
@@ -58,6 +59,7 @@ function isConfigured(spec: HarnessSpec): boolean {
   return spec.targets.some((t) => {
     const file = harnessFile(t.relPath);
     if ("append" in t) return readTextFile(file)?.includes(t.append.marker) ?? false;
+    if ("marker" in t) return readTextFile(file)?.includes(t.marker) ?? false;
     if (!t.hasRegistration) return false;
     const read = readJsonFile(file);
     return read.status === "ok" && t.hasRegistration(read.doc);
@@ -81,6 +83,17 @@ async function pickHarness(rl: readline.Interface): Promise<HarnessSpec | "other
 }
 
 function printOnly(spec: HarnessSpec): void {
+  // Verify-only targets let us recognize a registration the user added by hand.
+  const verify = spec.targets.find((t): t is VerifyTarget => "marker" in t);
+  if (verify) {
+    const file = harnessFile(verify.relPath);
+    if (readTextFile(file)?.includes(verify.marker)) {
+      console.log(`\n${spec.label}: already registered ✓ (${file})`);
+      console.log("Nothing to do — do NOT append the snippet again; a duplicate table would corrupt the file.");
+      recordHarness(spec.id);
+      return;
+    }
+  }
   if (spec.id === "codex") {
     console.log(`\nCodex keeps its config in ~/.codex/config.toml (TOML, managed by codex) — not auto-written yet.`);
     console.log("Add this MCP registration manually:\n");
@@ -90,6 +103,9 @@ function printOnly(spec: HarnessSpec): void {
     console.log(`\n${spec.label}: no automatic configuration available; see the Setup section of the README.`);
   }
   console.log("\nVerify:\n  taskent doctor");
+  // Record print-only harnesses too, so doctor keeps reporting registration
+  // missing until the manual edit lands.
+  recordHarness(spec.id);
 }
 
 async function printOtherSnippet(rl: readline.Interface): Promise<void> {
@@ -169,6 +185,9 @@ export async function runAddAgent(argv: string[]): Promise<void> {
     // whole harness before anything is written.
     const plans: FilePlan[] = [];
     for (const target of spec.targets) {
+      // Verify-only targets are probes, never written (print-only specs return
+      // before planning; this guard keeps the loop total over the union).
+      if ("marker" in target) continue;
       const file = harnessFile(target.relPath);
       if ("append" in target) {
         const plan = buildAppendPlan(readTextFile(file), target.append);

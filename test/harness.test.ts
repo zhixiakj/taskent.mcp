@@ -5,6 +5,7 @@ import path from "node:path";
 import {
   HARNESSES,
   buildAppendPlan,
+  codexSnippet,
   dshAppendSpec,
   findHarness,
   hookEventPresent,
@@ -16,6 +17,7 @@ import {
   mergeZcodeConfig,
   tomlAppendSafe,
   type AppendSpec,
+  type VerifyTarget,
 } from "../src/core/harness.js";
 import { backupFile, readJsonFile, writeJsonAtomic, writeTextAtomic } from "../src/core/jsonfile.js";
 
@@ -278,6 +280,29 @@ describe("deepseek (dsh) append target", () => {
     expect(looksLikeYamlPatchList("- insert:\n    - id: x\n")).toBe(true);
     expect(looksLikeYamlPatchList("insert:\n  - id: x\n")).toBe(false);
     expect(looksLikeYamlPatchList("just a scalar\n")).toBe(false);
+  });
+});
+
+describe("codex (print-only) verify target", () => {
+  const codexSpec = HARNESSES.find((h) => h.id === "codex")!;
+  const target = codexSpec.targets[0] as VerifyTarget;
+
+  it("is print-only with a single verify-only probe on config.toml", () => {
+    expect(codexSpec.kind).toBe("print-only");
+    expect(codexSpec.targets).toHaveLength(1);
+    expect(target.relPath).toBe(".codex/config.toml");
+    expect(target.marker).toBe("[mcp_servers.taskent]");
+  });
+
+  it("the printed snippet plants the verify marker (snippet ↔ probe stay in sync)", () => {
+    expect(codexSnippet()).toContain(target.marker);
+  });
+
+  it("the marker matches a real registration but not an env-only table", () => {
+    expect(`[features]\n[mcp_servers.taskent]\ncommand = "taskent"`.includes(target.marker)).toBe(true);
+    // [mcp_servers.taskent.env] does NOT contain "[mcp_servers.taskent]" as a
+    // substring — an env table without its parent must not read as registered.
+    expect('[mcp_servers.taskent.env]\nTASKENT_HARNESS = "codex"'.includes(target.marker)).toBe(false);
   });
 });
 
