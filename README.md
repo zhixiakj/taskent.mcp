@@ -133,7 +133,9 @@ Your passphrase never leaves the machine. Task titles, progress and project name
 with AES-256-GCM before upload; the server only sees ciphertext and blind IDs. Enter the same
 passphrase in the dashboard's E2EE card to decrypt. Encrypted projects show up as `P1`, `P2`, …
 (editable aliases) — status, grouping and push triggers keep working. Lost passphrase = data is
-unrecoverable.
+unrecoverable — you can leave an optional recall **hint** (`--hint`, or the prompt after the
+passphrase); it is stored in **plaintext on the server** and shown where you unlock, so never
+write the passphrase itself.
 
 ## Commands
 
@@ -143,7 +145,7 @@ unrecoverable.
 | `taskent add agent [HARNESS] [--yes]` | Auto-register taskent in an agent (zcode, claude-code, gemini, cursor, opencode, deepseek, kimi; codex prints a snippet) |
 | `taskent mcp` | Start the MCP server (stdio, for harness registration) |
 | `taskent hook --harness H --event E` | Hooks entry point (reads JSON payload from stdin) |
-| `taskent encrypt [--passphrase P]` | Enable/reset end-to-end encryption |
+| `taskent encrypt [--passphrase P] [--hint H]` | Enable/reset end-to-end encryption (optional plaintext hint stored server-side) |
 | `taskent flush` | Manually drain the local queue |
 | `taskent upgrade` | Self-update (`npm i -g taskent@latest`) |
 | `taskent doctor [--force]` | Health check |

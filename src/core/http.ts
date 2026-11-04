@@ -129,6 +129,8 @@ export interface KdfConfig {
   alg: string;
   iter: number;
   salt: string;
+  /** Optional passphrase hint (plaintext on the server); only present when set. */
+  hint?: string;
 }
 
 /** /kdf returns a per-user salt with a token, or the legacy global salt without one. */
@@ -140,6 +142,32 @@ export async function getKdf(serverUrl: string, token?: string, timeoutMs = 5_00
   );
   if (res.status !== 200) throw new ApiError(res.status, `kdf ${res.status}`);
   return (await res.json()) as KdfConfig;
+}
+
+/** PUT /kdf sets (non-empty) or clears (empty string) the passphrase hint. Throws on failure;
+ * callers treat this as a peripheral step — degrade with a warning, never abort encryption. */
+export async function setKdfHint(
+  serverUrl: string,
+  token: string,
+  hint: string | null,
+  timeoutMs = 5_000,
+): Promise<void> {
+  const res = await request(
+    joinUrl(serverUrl, "/kdf"),
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ hint: hint ?? "" }),
+    },
+    timeoutMs,
+  );
+  if (res.status !== 200) {
+    const text = await res.text().catch(() => "");
+    throw new ApiError(res.status, `kdf put ${res.status}: ${text.slice(0, 200)}`);
+  }
 }
 
 export interface Whoami {

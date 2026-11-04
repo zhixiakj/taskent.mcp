@@ -19,8 +19,9 @@ usage:
   taskent hook --harness H --event E [--cwd DIR]
                                   harness hook entry (reads JSON payload on stdin)
   taskent flush                   flush the local queue to the server now
-  taskent encrypt [--passphrase P]
-                                  enable/reset end-to-end encryption (passphrase never leaves this machine)
+  taskent encrypt [--passphrase P] [--hint H]
+                                  enable/reset end-to-end encryption (passphrase never leaves this
+                                  machine; optional recall hint is stored in plaintext on the server)
   taskent upgrade                 self-update via npm (npm i -g taskent@latest)
   taskent doctor [--force]        health check (config/version/queue/harnesses/e2ee/server)
 

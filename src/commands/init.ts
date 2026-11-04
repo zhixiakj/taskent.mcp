@@ -3,7 +3,7 @@ import readline from "node:readline/promises";
 import { saveConfig, type TaskentConfig } from "../core/config.js";
 import { MIN_PASSPHRASE_LENGTH } from "../core/crypto.js";
 import { SERVER_URL, askUrlSnippet } from "../core/harness.js";
-import { enableEncryption } from "./encrypt.js";
+import { askHintAndSave, enableEncryption } from "./encrypt.js";
 import { ensureHome } from "../core/paths.js";
 
 interface InitFlags {
@@ -150,6 +150,9 @@ export async function runInit(argv: string[]): Promise<void> {
       const encResult = await enableEncryption(serverUrl, passphrase, token);
       if (encResult.ok) {
         console.log("e2ee enabled (derived key cached locally, 0600)");
+        // Optional recall hint, stored in plaintext server-side (peripheral: never fails init).
+        const savedHint = await askHintAndSave(rl, serverUrl, token, passphrase, { interactive: true });
+        if (savedHint !== null) console.log("hint saved on the server (plaintext; shown where you unlock)");
       } else {
         console.error(`e2ee NOT enabled (server /kdf unreachable or error: ${encResult.error}); run \`taskent encrypt\` later`);
       }

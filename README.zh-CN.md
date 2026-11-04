@@ -110,7 +110,7 @@ MCP server 是标准 stdio MCP,在 harness 读取 MCP 配置处注册 `taskent m
 taskent encrypt           # 设置口令;密钥本地派生(PBKDF2-SHA256, 600k 迭代)
 ```
 
-口令永不上传。任务标题、进度、项目名在上报前以 AES-256-GCM 加密,服务端只见密文与盲索引;在看板 E2EE 卡输入同一口令即可解密。加密项目显示为 `P1`、`P2`…(编号可改名),状态、分组、推送触发不受影响。**口令遗忘 = 数据不可恢复**。
+口令永不上传。任务标题、进度、项目名在上报前以 AES-256-GCM 加密,服务端只见密文与盲索引;在看板 E2EE 卡输入同一口令即可解密。加密项目显示为 `P1`、`P2`…(编号可改名),状态、分组、推送触发不受影响。**口令遗忘 = 数据不可恢复**——可留一条可选的**提示语**(`--hint`,或口令后的交互提问);它**明文存放在服务端**、展示在解锁处,切勿把口令本身写进去。
 
 ## 命令一览
 
@@ -120,7 +120,7 @@ taskent encrypt           # 设置口令;密钥本地派生(PBKDF2-SHA256, 600k 
 | `taskent add agent [HARNESS] [--yes]` | 自动把 taskent 注册进编码代理(zcode、claude-code、gemini、cursor、opencode、deepseek、kimi;codex 打印片段) |
 | `taskent mcp` | 启动 MCP server(stdio,供 harness 注册) |
 | `taskent hook --harness H --event E` | hooks 入口(stdin 读 JSON 负载) |
-| `taskent encrypt [--passphrase P]` | 开启/重设端到端加密 |
+| `taskent encrypt [--passphrase P] [--hint H]` | 开启/重设端到端加密(可选提示语,明文存服务端) |
 | `taskent flush` | 手动清空本地队列 |
 | `taskent upgrade` | 自更新到最新版 |
 | `taskent doctor [--force]` | 健康检查 |
